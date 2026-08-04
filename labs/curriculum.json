@@ -1,0 +1,362 @@
+{
+  "title": "VERNACULAR live curriculum",
+  "blurb": "BoS → Slang Playground ports → neural bridges → DiffSlang / neural shading / afternoon trilogy. Navigate with [ ] / Left-Right; L lists lessons. Package: slang_falcon.",
+  "phases": [
+    {
+      "id": "basics",
+      "title": "Basics - Book of Shaders -> Slang",
+      "lessons": [
+        {
+          "id": "bos/00_hello",
+          "title": "Hello UV",
+          "shader": "labs/book_of_shaders/shaders/00_hello.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/book_of_shaders/00_hello.md",
+          "blurb": "Map pixels to UV and return a simple color."
+        },
+        {
+          "id": "bos/01_uniforms",
+          "title": "Uniforms / time",
+          "shader": "labs/book_of_shaders/shaders/01_uniforms.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/book_of_shaders/01_uniforms.md",
+          "blurb": "Live passes float time - breathe the frame with sin(time)."
+        },
+        {
+          "id": "bos/02_shaping",
+          "title": "Shaping functions",
+          "shader": "labs/book_of_shaders/shaders/02_shaping.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/book_of_shaders/02_shaping.md",
+          "blurb": "Plot y = f(x) across the image (pow / smoothstep / sin)."
+        },
+        {
+          "id": "bos/03_colors",
+          "title": "Colors",
+          "shader": "labs/book_of_shaders/shaders/03_colors.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/book_of_shaders/03_colors.md",
+          "blurb": "Mix and interpolate colors in UV space."
+        },
+        {
+          "id": "bos/04_shapes",
+          "title": "Shapes",
+          "shader": "labs/book_of_shaders/shaders/04_shapes.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/book_of_shaders/04_shapes.md",
+          "blurb": "SDF circles and soft edges."
+        },
+        {
+          "id": "bos/05_patterns",
+          "title": "Patterns",
+          "shader": "labs/book_of_shaders/shaders/05_patterns.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/book_of_shaders/05_patterns.md",
+          "blurb": "Tile UV space into repeating cells."
+        }
+      ]
+    },
+    {
+      "id": "slang_playground",
+      "title": "Slang Playground - official demos -> hello_pixel",
+      "lessons": [
+        {
+          "id": "slang_playground/sp01_simple_color",
+          "title": "Simple Color",
+          "shader": "labs/slang_playground/shaders/sp01_simple_color.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/slang_playground/sp01_simple_color.md",
+          "blurb": "Solid flat color — Color panel drives float3 color."
+        },
+        {
+          "id": "slang_playground/sp16_simple_image",
+          "title": "Simple Image",
+          "shader": "labs/slang_playground/shaders/sp16_simple_image.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/slang_playground/sp16_simple_image.md",
+          "blurb": "Sample cowboy_hat.png via Texture2D + UV; optional tint.",
+          "texture": "labs/slang_playground/assets/cowboy_hat.png"
+        },
+        {
+          "id": "slang_playground/sp02_circle",
+          "title": "ShaderToy: Circle",
+          "shader": "labs/slang_playground/shaders/sp02_circle.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/slang_playground/sp02_circle.md",
+          "blurb": "Polar color beams from the ShaderToy circle demo."
+        },
+        {
+          "id": "slang_playground/sp03_ocean",
+          "title": "ShaderToy: Ocean",
+          "shader": "labs/slang_playground/shaders/sp03_ocean.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/slang_playground/sp03_ocean.md",
+          "blurb": "Raymarched ocean with [Differentiable] wave field.",
+          "interactive_mouse": true
+        },
+        {
+          "id": "slang_playground/sp04_volume_slice",
+          "title": "Volume Slice",
+          "shader": "labs/slang_playground/shaders/sp04_volume_slice.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/slang_playground/sp04_volume_slice.md",
+          "blurb": "Animated Z-slice through a procedural 3D density."
+        },
+        {
+          "id": "slang_playground/sp05_multi_kernel",
+          "title": "Multi-kernel",
+          "shader": "labs/slang_playground/shaders/sp05_multi_kernel.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/slang_playground/sp05_multi_kernel.md",
+          "blurb": "Sine buffer as grayscale (multi-pass story, one entry)."
+        },
+        {
+          "id": "slang_playground/sp06_gsplat2d",
+          "title": "2D Splatter",
+          "shader": "labs/slang_playground/shaders/sp06_gsplat2d.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/slang_playground/sp06_gsplat2d.md",
+          "blurb": "Alpha-composited symmetric 2D Gaussians."
+        },
+        {
+          "id": "slang_playground/sp07_gsplat2d_diff",
+          "title": "Differentiable 2D Splatter",
+          "shader": "labs/slang_playground/shaders/sp07_gsplat2d_diff.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/slang_playground/sp07_gsplat2d_diff.md",
+          "blurb": "Target | morphing blobs | abs-error teaching strip."
+        },
+        {
+          "id": "slang_playground/sp08_autodiff",
+          "title": "Automatic Differentiation",
+          "shader": "labs/slang_playground/shaders/sp08_autodiff.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/slang_playground/sp08_autodiff.md",
+          "blurb": "sumOfSquares + |dF/dx| + |dF/dy| panels."
+        },
+        {
+          "id": "slang_playground/sp09_properties",
+          "title": "Properties",
+          "shader": "labs/slang_playground/shaders/sp09_properties.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/slang_playground/sp09_properties.md",
+          "blurb": "Packed MyPoint properties as moving markers."
+        },
+        {
+          "id": "slang_playground/sp10_generics",
+          "title": "Generics & Extensions",
+          "shader": "labs/slang_playground/shaders/sp10_generics.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/slang_playground/sp10_generics.md",
+          "blurb": "IMyHashable Circle and float3 via extensions."
+        },
+        {
+          "id": "slang_playground/sp11_operator_overload",
+          "title": "Operator Overload",
+          "shader": "labs/slang_playground/shaders/sp11_operator_overload.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/slang_playground/sp11_operator_overload.md",
+          "blurb": "MyPoint + and [] drawn in UV space."
+        },
+        {
+          "id": "slang_playground/sp12_lambda",
+          "title": "Lambda Expressions",
+          "shader": "labs/slang_playground/shaders/sp12_lambda.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/slang_playground/sp12_lambda.md",
+          "blurb": "MyData.map with capturing lambda as bars."
+        },
+        {
+          "id": "slang_playground/sp13_painting",
+          "title": "Painting",
+          "shader": "labs/slang_playground/shaders/sp13_painting.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/slang_playground/sp13_painting.md",
+          "blurb": "Soft brush trail stand-in for mouse paint canvas."
+        },
+        {
+          "id": "slang_playground/sp14_image_from_url",
+          "title": "Image From URL",
+          "shader": "labs/slang_playground/shaders/sp14_image_from_url.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/slang_playground/sp14_image_from_url.md",
+          "blurb": "Aspect-correct UV sample — cool shades smiley (cyber vibe URL stand-in)."
+        },
+        {
+          "id": "slang_playground/sp15_variadic",
+          "title": "Variadic Generics",
+          "shader": "labs/slang_playground/shaders/sp15_variadic.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/slang_playground/sp15_variadic.md",
+          "blurb": "Interface-constrained tintable args as color bands."
+        }
+      ]
+    },
+    {
+      "id": "neural",
+      "title": "Neural - BoS ideas -> Slang neural graphics",
+      "lessons": [
+        {
+          "id": "neural/n01_function_to_network",
+          "title": "From function to network",
+          "shader": "labs/neural/shaders/n01_function_to_network.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/neural/n01_function_to_network.md",
+          "blurb": "Analytic shaping curve beside a tiny baked MLP approximation."
+        },
+        {
+          "id": "neural/n02_teacher_vs_neural",
+          "title": "Teacher vs neural strip",
+          "shader": "labs/neural/shaders/n02_teacher_vs_neural.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/neural/n02_teacher_vs_neural.md",
+          "blurb": "Analytic BRDF teacher | tiny MLP | abs-diff (train_brdf for real weights)."
+        },
+        {
+          "id": "neural/n03_autodiff_intuition",
+          "title": "Autodiff intuition",
+          "shader": "labs/neural/shaders/n03_autodiff_intuition.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/neural/n03_autodiff_intuition.md",
+          "blurb": "Loss landscape + gradient magnitude in pixel space."
+        },
+        {
+          "id": "neural/n04_live_neural_param",
+          "title": "Live neural parameter",
+          "shader": "labs/neural/shaders/n04_live_neural_param.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/neural/n04_live_neural_param.md",
+          "blurb": "BoS uniforms meet neural shading: time + editable gain drive a tiny net."
+        }
+      ]
+    },
+    {
+      "id": "diffslang",
+      "title": "DiffSlang - autodiff as first-class",
+      "lessons": [
+        {
+          "id": "diffslang/d01_differentiable_attr",
+          "title": "[Differentiable] attribute",
+          "shader": "labs/diffslang/shaders/d01_differentiable_attr.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/diffslang/d01_differentiable_attr.md",
+          "blurb": "Loss landscape vs |dL/dx| - why [Differentiable] exists."
+        },
+        {
+          "id": "diffslang/d02_fwd_bwd_intuition",
+          "title": "Forward vs backward",
+          "shader": "labs/diffslang/shaders/d02_fwd_bwd_intuition.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/diffslang/d02_fwd_bwd_intuition.md",
+          "blurb": "JVP seed direction vs VJP gradient magnitude."
+        },
+        {
+          "id": "diffslang/d03_simt_vs_tensors",
+          "title": "SIMT vs tensor batches",
+          "shader": "labs/diffslang/shaders/d03_simt_vs_tensors.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/diffslang/d03_simt_vs_tensors.md",
+          "blurb": "Same shade: pixel threads vs batch lattice mental model."
+        }
+      ]
+    },
+    {
+      "id": "neural_shading",
+      "title": "Neural shading - get started",
+      "lessons": [
+        {
+          "id": "neural_shading/ns01_trainable_pipeline",
+          "title": "Trainable pipeline",
+          "shader": "labs/neural_shading/shaders/ns01_trainable_pipeline.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/neural_shading/ns01_trainable_pipeline.md",
+          "blurb": "Authored shade vs drifting trainable-looking params."
+        },
+        {
+          "id": "neural_shading/ns02_mlp_approx_shader",
+          "title": "MLP approximates a shader",
+          "shader": "labs/neural_shading/shaders/ns02_mlp_approx_shader.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/neural_shading/ns02_mlp_approx_shader.md",
+          "blurb": "Teacher | MLP | abs-diff strip (ties to train_brdf / N02)."
+        },
+        {
+          "id": "neural_shading/ns03_freq_encoding",
+          "title": "Frequency encoding",
+          "shader": "labs/neural_shading/shaders/ns03_freq_encoding.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/neural_shading/ns03_freq_encoding.md",
+          "blurb": "Raw UV net vs sin/cos-encoded features."
+        },
+        {
+          "id": "neural_shading/ns04_coopvec_note",
+          "title": "CoopVec Phase 2 note",
+          "shader": "labs/neural_shading/shaders/ns04_coopvec_note.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/neural_shading/ns04_coopvec_note.md",
+          "blurb": "Tensor-Core CoopVec is Phase 2 native - schematic only here."
+        },
+        {
+          "id": "neural_shading/ns05_slangpy_train_loop",
+          "title": "SlangPy train loop",
+          "shader": "labs/neural_shading/shaders/ns05_slangpy_train_loop.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/neural_shading/ns05_slangpy_train_loop.md",
+          "blurb": "Forward -> loss -> bwd -> Adam schematic + CLI map."
+        }
+      ]
+    },
+    {
+      "id": "neural_gfx_afternoon",
+      "title": "Neural GFX - afternoon sequence",
+      "lessons": [
+        {
+          "id": "neural_gfx_afternoon/ng01_slangpy_calls",
+          "title": "Call Slang from Python",
+          "shader": "labs/neural_gfx_afternoon/shaders/ng01_slangpy_calls.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/neural_gfx_afternoon/ng01_slangpy_calls.md",
+          "blurb": "hello_pixel dispatch grid - SlangPy without boilerplate."
+        },
+        {
+          "id": "neural_gfx_afternoon/ng02_why_gradients",
+          "title": "Why gradients",
+          "shader": "labs/neural_gfx_afternoon/shaders/ng02_why_gradients.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/neural_gfx_afternoon/ng02_why_gradients.md",
+          "blurb": "Target | random blobs | per-pixel L2 heat."
+        },
+        {
+          "id": "neural_gfx_afternoon/ng03_gaussian_fit",
+          "title": "Gaussian image fit",
+          "shader": "labs/neural_gfx_afternoon/shaders/ng03_gaussian_fit.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/neural_gfx_afternoon/ng03_gaussian_fit.md",
+          "blurb": "2D Gaussians morph toward target; fit_blobs for real Adam."
+        },
+        {
+          "id": "neural_gfx_afternoon/ng04_tiny_mlp_fit",
+          "title": "Tiny MLP texture fit",
+          "shader": "labs/neural_gfx_afternoon/shaders/ng04_tiny_mlp_fit.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/neural_gfx_afternoon/ng04_tiny_mlp_fit.md",
+          "blurb": "UV->RGB net morphs toward a procedural texture."
+        }
+      ]
+    },
+    {
+      "id": "feedback",
+      "title": "Feedback - Vsynth-style stubs",
+      "lessons": [
+        {
+          "id": "feedback/fb01_pingpong",
+          "title": "Ping-pong feedback (simulated)",
+          "shader": "labs/feedback/shaders/fb01_pingpong.slang",
+          "entry": "hello_pixel",
+          "markdown": "labs/feedback/fb01_pingpong.md",
+          "blurb": "Time-trail stand-in for video feedback until live has ping-pong RTs."
+        }
+      ]
+    }
+  ]
+}

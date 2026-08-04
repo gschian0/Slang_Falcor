@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BRDF teacher vs MLP — Slang_Falcon</title>
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+  <div class="layout">
+    <p><a class="back" href="../index.html">← Demos</a></p>
+    <p class="brand">Slang_Falcon</p>
+    <h1>Analytic Disney vs MLP</h1>
+    <p class="lede">Loads Phase 1 <code>SFMLP001</code> weights. Left teacher · middle neural · right abs-diff.</p>
+    <div class="toolbar">
+      <button id="btn-default" type="button">Load default weights</button>
+      <label class="file">Or choose file <input id="file" type="file" accept=".bin" /></label>
+      <span class="status" id="status">Idle</span>
+    </div>
+    <canvas id="cv" width="768" height="256"></canvas>
+  </div>
+  <script type="module" src="brdf_compare.js"></script>
+</body>
+</html>

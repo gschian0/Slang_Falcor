@@ -1,0 +1,100 @@
+:root {
+  --bg0: #0c1210;
+  --bg1: #152019;
+  --ink: #e8f0ea;
+  --muted: #9bb0a2;
+  --accent: #3dba7a;
+  --line: rgba(232, 240, 234, 0.12);
+  --font-display: "Segoe UI", "Iowan Old Style", Georgia, serif;
+  --font-body: "Segoe UI", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #1e3a2c 0%, transparent 55%),
+    radial-gradient(900px 500px at 90% 0%, #243248 0%, transparent 50%),
+    linear-gradient(165deg, var(--bg0), var(--bg1));
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+.hero {
+  padding: 4.5rem 1.5rem 2rem;
+  max-width: 52rem;
+}
+.brand {
+  font-size: clamp(2.4rem, 6vw, 3.6rem);
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 0 0 0.75rem;
+  color: var(--accent);
+}
+.hero h1 {
+  font-size: clamp(1.25rem, 2.5vw, 1.6rem);
+  font-weight: 500;
+  margin: 0 0 0.75rem;
+}
+.lede { color: var(--muted); max-width: 36rem; line-height: 1.5; }
+
+.demos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  padding: 0 1.5rem 3rem;
+}
+.demos a {
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent);
+  padding-bottom: 0.15rem;
+}
+.demos a:hover { color: var(--accent); }
+
+footer {
+  padding: 1rem 1.5rem 2.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  border-top: 1px solid var(--line);
+}
+code {
+  font-size: 0.85em;
+  background: rgba(0,0,0,0.35);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+}
+
+.layout {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+canvas {
+  width: 100%;
+  max-width: 768px;
+  height: auto;
+  background: #000;
+  border: 1px solid var(--line);
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+button, .file {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+  font: inherit;
+}
+button:hover { border-color: var(--accent); color: var(--accent); }
+.status { color: var(--muted); font-size: 0.9rem; }
+.back { color: var(--muted); }

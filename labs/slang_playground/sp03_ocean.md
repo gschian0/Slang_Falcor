@@ -1,0 +1,23 @@
+# sp03_ocean — ShaderToy: Ocean
+
+Raymarched ocean; [Differentiable] waves (playground uses bwd_diff normals).
+
+**Source:** [Slang Playground](https://shader-slang.org/slang-playground/) · demos in [shader-slang/slang-playground](https://github.com/shader-slang/slang-playground) (`public/demos/`).
+**Attribution:** shader-slang (Apache-2.0 WITH LLVM-exception). Ported for Slang_Falcon live preview — not a fork of the playground UI.
+
+## Run
+
+```powershell
+python -m slang_falcon.live --lesson slang_playground/sp03_ocean
+python -m slang_falcon.live --lesson slang_playground/sp03_ocean --once
+```
+
+## Try
+
+1. Open the matching demo in the [playground](https://shader-slang.org/slang-playground/) and compare.
+2. Edit `shaders/sp03_ocean.slang` — save to hot-reload.
+3. Note API differences: playground uses `import rendering` / `drawPixel`; we use `hello_pixel(pixel, resolution, time, mouse)`.
+4. **Drag the shader** to look around (curriculum `interactive_mouse`). Move the window via the title bar, Alt+drag, or middle-button.
+5. Ocean uses **2×2 supersample** in-shader (smoother horizon / wave edges at 640).
+
+Shader: `shaders/sp03_ocean.slang`

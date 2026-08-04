@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+.venv/
+venv/
+.env
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.whl
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Training outputs
+assets/weights/*.bin
+assets/output/
+assets/cache/
+!assets/weights/.gitkeep
+!assets/output/.gitkeep
+!assets/cache/.gitkeep
+
+# IDE / OS
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Native build
+native/build/
+native/out/
+native/Falcor/
+native/external/
+cmake-build-*/
+*.obj
+*.pdb
+*.exe
+*.dll
+*.lib
+*.exp
+*.ilk
+
+# Web
+web/node_modules/
+web/dist/
+web/.cache/
+
+# Misc
+*.log
+*.tmp
+.cursor/

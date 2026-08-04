@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "slang-falcon"
+version = "0.1.0"
+description = "VERNACULAR — KodeLife-class live Slang IDE and neural shading school (package: slang_falcon)"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+authors = [{ name = "VERNACULAR / slang_falcon Contributors" }]
+keywords = ["vernacular", "slang", "slangpy", "neural-shading", "brdf", "mlp", "falcor"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Graphics",
+]
+dependencies = [
+    "slangpy==0.43.1",
+    "numpy>=1.26,<3",
+    "pillow>=10.0",
+    "pygame>=2.5",
+    "jupyter>=1.0",
+    "numba>=0.59",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4"]
+
+[project.scripts]
+vernacular = "slang_falcon.live:main"
+slang-falcon-live = "slang_falcon.live:main"
+slang-falcon-lessons = "slang_falcon.lessons:main"
+slang-falcon-train-brdf = "slang_falcon.train_brdf:main"
+slang-falcon-fit-blobs = "slang_falcon.fit_blobs:main"
+slang-falcon-infer = "slang_falcon.infer:main"
+
+[project.urls]
+Homepage = "https://github.com/shader-slang/slang"
+Documentation = "docs/"
+
+[tool.setuptools.packages.find]
+where = ["python"]
+
+[tool.setuptools.package-data]
+slang_falcon = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["python"]

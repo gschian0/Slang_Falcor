@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Texture footprint — Slang_Falcon</title>
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+  <div class="layout">
+    <p><a class="back" href="../index.html">← Demos</a></p>
+    <p class="brand">Slang_Falcon</p>
+    <h1>Texture footprint story</h1>
+    <p class="lede">
+      Classic mip chains store many texels. A tiny MLP stores a fixed weight blob —
+      quality vs memory is the lesson (educational; not RTXNTC).
+    </p>
+    <canvas id="cv" width="768" height="256"></canvas>
+    <p class="status" id="status"></p>
+  </div>
+  <script type="module">
+    const cv = document.getElementById("cv");
+    const ctx = cv.getContext("2d");
+    const w = 256, h = 256;
+    const img = ctx.createImageData(w * 3, h);
+    // Left: "classic" procedural detail; middle: low-freq MLP-like; right: residual
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const u = x / w, v = y / h;
+        const classic = [
+          0.5 + 0.5 * Math.sin(40 * u) * Math.cos(30 * v),
+          0.4 + 0.3 * Math.sin(12 * u + v),
+          0.35,
+        ];
+        const approx = [
+          0.5 + 0.2 * Math.sin(6 * u) * Math.cos(4 * v),
+          0.4 + 0.15 * Math.sin(3 * u + v),
+          0.35,
+        ];
+        const diff = classic.map((c, i) => Math.abs(c - approx[i]) * 2);
+        const panels = [classic, approx, diff];
+        for (let p = 0; p < 3; p++) {
+          const i = ((y * w * 3) + p * w + x) * 4;
+          img.data[i] = Math.floor(panels[p][0] * 255);
+          img.data[i + 1] = Math.floor(panels[p][1] * 255);
+          img.data[i + 2] = Math.floor(panels[p][2] * 255);
+          img.data[i + 3] = 255;
+        }
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    // Rough byte counts for intuition
+    const texBytes = 512 * 512 * 4 * 1.33; // RGBA + mips ~4/3
+    const mlpBytes = (5 * 32 + 32) + (32 * 32 + 32) + (32 * 3 + 3);
+    document.getElementById("status").textContent =
+      `Classic ~${(texBytes / 1024).toFixed(0)} KiB (example 512² RGBA+mips) vs MLP ~${(mlpBytes * 4 / 1024).toFixed(1)} KiB float weights.`;
+  </script>
+</body>
+</html>
