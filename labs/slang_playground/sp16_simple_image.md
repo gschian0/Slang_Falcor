@@ -15,7 +15,7 @@ python -m slang_falcon.live --lesson slang_playground/sp16_simple_image --once
 
 1. Confirm the cowboy-hat photo fills the viewport (letterboxed by the live window, not the shader).
 2. Use the **Color** panel on `tint` (hover `float3` / `tint` in the editor) — white = identity, other values multiply the image.
-3. Edit UV math or drop the V flip — save to hot-reload.
+3. Edit UV math — save to hot-reload.
 4. Compare with **Simple Color** (`sp01_simple_color`) which only returns a solid `float3`.
 
 Shader: `shaders/sp16_simple_image.slang`
