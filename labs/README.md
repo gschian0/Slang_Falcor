@@ -29,7 +29,8 @@ python -m slang_falcon.lessons          # print ids + how to run
 python -m slang_falcon.live --lesson 0  # start at bos/00_hello
 
 # Jump to playground ports or trilogy:
-python -m slang_falcon.live --lesson slang_playground/sp01_simple_image
+python -m slang_falcon.live --lesson slang_playground/sp01_simple_color
+python -m slang_falcon.live --lesson slang_playground/sp16_simple_image
 python -m slang_falcon.live --lesson diffslang/d01_differentiable_attr
 
 # In the live window (click away from the code panel):

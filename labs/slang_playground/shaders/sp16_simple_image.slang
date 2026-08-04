@@ -15,9 +15,8 @@ public float3 hello_pixel(
     SamplerState samp,
     float3 tint)
 {
+    // pixel (0,0) is top-left — matches PIL row 0 / SampleLevel UV y=0.
     float2 uv = (float2(pixel) + 0.5f) / float2(resolution);
-    // Flip V so PNG row 0 (top) maps to UV y=1 in typical D3D-style SampleLevel.
-    float2 uv_flip = float2(uv.x, 1.0f - uv.y);
-    float4 c = image.SampleLevel(samp, uv_flip, 0);
+    float4 c = image.SampleLevel(samp, uv, 0);
     return c.rgb * tint;
 }

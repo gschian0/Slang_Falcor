@@ -93,14 +93,15 @@ pytest -q
 
 
 
-Open `labs/` for the teaching track. Live curriculum: **BoS 00–05** → **Slang Playground `sp01`–`sp15`** → **neural N01–N04** → **DiffSlang / neural_shading / afternoon** (`labs/curriculum.json`). Playground hub: [`labs/slang_playground/README.md`](labs/slang_playground/README.md). Trilogy hub: [`labs/neural_trilogy/README.md`](labs/neural_trilogy/README.md). Lab 4 remains the BRDF hero train path.
+Open `labs/` for the teaching track. Live curriculum: **BoS 00–05** → **Slang Playground `sp01`–`sp16`** → **neural N01–N04** → **DiffSlang / neural_shading / afternoon** (`labs/curriculum.json`). Playground hub: [`labs/slang_playground/README.md`](labs/slang_playground/README.md). Trilogy hub: [`labs/neural_trilogy/README.md`](labs/neural_trilogy/README.md). Lab 4 remains the BRDF hero train path.
 
 ### Live options
 
 ```powershell
 python -m slang_falcon.live --lesson 0
 python -m slang_falcon.live --lesson bos/00_hello
-python -m slang_falcon.live --lesson slang_playground/sp01_simple_image
+python -m slang_falcon.live --lesson slang_playground/sp01_simple_color
+python -m slang_falcon.live --lesson slang_playground/sp16_simple_image
 python -m slang_falcon.live --lesson neural/n01_function_to_network
 python -m slang_falcon.live --lesson diffslang/d01_differentiable_attr
 python -m slang_falcon.live --lesson neural_gfx_afternoon/ng01_slangpy_calls

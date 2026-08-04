@@ -951,7 +951,7 @@ def render_frame(
                 c = _default_color_rgba(name)
                 tint = (float(c[0]), float(c[1]), float(c[2]))
                 break
-        return _numpy_sample_texture(rgba, width, height, tint=tint, flip_v=True)
+        return _numpy_sample_texture(rgba, width, height, tint=tint, flip_v=False)
 
 
 def _map_pos_to_shader_mouse(
