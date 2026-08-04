@@ -185,6 +185,8 @@ tests/          Smoke pytest
 
 - [RTXNS](https://github.com/NVIDIA-RTX/RTXNS) — CoopVec MLP patterns for Phase 2
 
+- [Vsynth](https://kevinkripper.com/vsynth) — modular Max Gen video synthesizer; inspiration for feedback / patch graphs
+
 
 
 ## License
