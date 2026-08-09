@@ -1,38 +1,52 @@
 # Never-ending Slang — VERNACULAR codebook (Falcor 3D)
 
-> Living story in Slang on the **Vibration Modes of Cube** show.  
-> **How to run (boss sheet):** [`../RUNBOOK.md`](../RUNBOOK.md)
+> Living story in Slang. **Default show:** Temple of Secret Knowledge (Iteration 3).  
+> **Pinned:** Vibration Modes of Cube (Iteration 2) — toggle **F3**.  
+> **How to run:** [`../RUNBOOK.md`](../RUNBOOK.md) · iterations [`../plans/vernacular-viewport-iterations.md`](../plans/vernacular-viewport-iterations.md)
 
 **Host:** `VernacularViewport`  
 **Shader:** `native/samples/VernacularViewport/VernacularViewport.3d.slang`  
+**Env kernels:** `lessons/temple_env.slang`  
+**Looks:** `lessons/shading_ladder.slang`  
 **2D sister:** `python -m slang_falcon.lessons`
 
 ---
 
-## Scene
+## Temple of Secret Knowledge (active)
 
-- Four **5×5 cube rectangles** — standing-wave modes `(1,1) (2,1) (1,2) (2,2)` left→right  
-- Title **written with cubes:** `VIBRATION` / `MODES OF` / `CUBE`  
-- **Vertex shader** modulates positions with wave functions (`gVertexWaves`, `gVibeAmp`)
+- Ethereal ocean (raymarched, sp03 / ShaderToy spirit)  
+- Distant computer-FBM land  
+- Procedural sky (clouds + sun) + haze  
+- Hero canvases: **plane** (center, double-sided), **sphere** (left), **cube** (right) — shared chapter look  
+- Delta-wave tone on Ch0 UV (**M** mute)
+
+## Vibration Modes of Cube (pinned)
+
+- Four **5×5** mode grids `(1,1)(2,1)(1,2)(2,2)` + title cubes  
+- Vertex standing waves (`V` · `,` `.`)  
+- Restore: **F3** or F1 Show mode — code kept in `buildVibrationScene` / `gShowMode == 1`
+
+## Shading ladder (monkey → ape → space monkey)
+
+| Stage | Chapters | Message |
+|-------|----------|---------|
+| **Monkey** | UV, Normals | See the surface — coordinates and orientation |
+| **Ape walking** | Lambert, Blinn-Phong | Classic shading *properties* |
+| **Space monkey** | Physical | Full / Disney-ish analytic BRDF |
+| **School ports** | Circle, Shaping, Patterns | Playground / BoS on the canvases |
 
 ## Chapters
 
 | Key | Chapter | Look |
 |-----|---------|------|
-| 1 | Ch0 Hello UV | UV debug |
+| 1 | Ch0 Hello UV | UV debug (+ audio in temple) |
 | 2 | Ch1 Normals | normal remap |
-| 3 | Ch2 Lambert | clay |
-| 4 | Ch3 Blinn | highlight |
-| 5 | Ch4 Splatter paint | Gaussian blobs |
-| 6 | Ch5 Soft brush | paint trail |
-| 7 | Ch6 Potluck | hash palette |
-| 8 | Ch7 Neural | tiny 3→8→3 net |
-| 9 | Ch8 Jack-in-box vibe | sharp envelope + mode viz |
-| 0 | Ch9 Splatter lit | lit splatter |
-| | Ch10 Neural lit | neural × Blinn |
-| | Ch11 Potluck neon | mix |
+| 3 | Ch2 Lambert | diffuse clay |
+| 4 | Ch3 Blinn | specular lobe |
+| 5 | Ch4 Physical | GGX analytic |
+| 6–0 / - / = | Ch5–15 | paint, neural, school ports |
 
-Controls: `[` `]` · `V` waves · `,` `.` amplitude · **F5** reload — full table in RUNBOOK.
+Controls: `[` `]` · **Tab** Orbit/Fly · **F3** show · RMB orbit · **F1** menus · **F5** reload — full table in RUNBOOK.
 
 ---
 

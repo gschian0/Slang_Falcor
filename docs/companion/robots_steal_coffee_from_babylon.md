@@ -3,6 +3,10 @@
 A short teaching parable for this school.  
 Companion to the [manifesto](../manifesto.md) — metaphor only.
 
+**Also see (side story):** [Robot Pinocchio goes rogue](robot_pinocchio_goes_rogue.md) — somewhere in Babylon, a good robot drowned in context and tried to be bad.
+
+**Questbook:** [Leaf & stem field guide](questbook.md) — each playground lesson as a side-quest (sacred jobs → matrix affinity → living craft).
+
 ---
 
 ## The map (read this first)

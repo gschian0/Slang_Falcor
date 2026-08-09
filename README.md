@@ -147,7 +147,7 @@ python/         slang_falcon package + CLI
 
 labs/           Numbered teaching labs
 
-docs/           Setup + weight export format + [manifesto](docs/manifesto.md) + [companion parable](docs/companion/robots_steal_coffee_from_babylon.md)
+docs/           Setup + weight export format + [manifesto](docs/manifesto.md) + [companion parable](docs/companion/robots_steal_coffee_from_babylon.md) + [questbook](docs/companion/questbook.md)
 
 native/         VERNACULAR native / Falcor host (Phase 2)
 
@@ -165,6 +165,7 @@ tests/          Smoke pytest
 
 - [Round 1 changelog](docs/ROUND1.md) — what ships today; next round = Falcor 3D
 - [Companion parable](docs/companion/robots_steal_coffee_from_babylon.md) — robots / Babylon allegory: translate closed-stack “coffee” → open-stack Yerba Matte (French Press) / VERNACULAR ([manifesto](docs/manifesto.md))
+- [Questbook](docs/companion/questbook.md) — playground lessons as leaf & stem side-quests (sacred jobs → matrix affinity)
 - [VERNACULAR](docs/plans/vernacular.md) — KodeLife-class live Slang IDE + local AI helper (pinned on [roadmap](docs/roadmap.md)); package remains `slang_falcon`
 - [Vsynth-style feedback patches](docs/plans/vsynth-feedback.md) — video feedback, patch graphs, differentiable diffusion as trainable feedback (pinned on [roadmap](docs/roadmap.md); stub [`labs/feedback/`](labs/feedback/))
 - [Inline LLM / AI + SlangTorch realtime](docs/plans/llm-slang-torch-realtime.md) — host LLM assist + Torch/SlangPy bridge toward live neural inference (pinned on [roadmap](docs/roadmap.md))

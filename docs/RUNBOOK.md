@@ -3,12 +3,16 @@
 You are not guessing. This is the operating sheet.
 
 **Repo:** `D:\WindowsProgramming\Slang_Falcor`  
-**3D school:** Falcor `VernacularViewport` — abstract studio (lesson cube on island)  
-**Plan:** [`plans/vernacular-3d-lesson-world.md`](plans/vernacular-3d-lesson-world.md)
+**3D show (primary):** Falcor `VernacularViewport` — **Temple of Secret Knowledge** (Iteration 3)  
+**Pinned show:** **Vibration Modes of Cube** (Iteration 2) — `F3`  
+**Camera:** Orbit / Fly (Iteration 4) — `Tab` or F1 → Movement  
+**Codebook:** [`codebook/never_ending_slang.md`](codebook/never_ending_slang.md)  
+**Iterations:** [`plans/vernacular-viewport-iterations.md`](plans/vernacular-viewport-iterations.md)  
+**Omniverse:** [`plans/vernacular-omniverse-bridge.md`](plans/vernacular-omniverse-bridge.md) — not Kit today; compose via Slang/USD later
 
 ---
 
-## Daily — abstract studio
+## Daily — Temple of Secret Knowledge
 
 ### Rebuild
 
@@ -28,58 +32,64 @@ cd D:\WindowsProgramming\Slang_Falcor\native\external\Falcor\build\windows-vs202
 
 | Layer | What |
 |-------|------|
-| **Morph cube** | Lesson canvas in front of you — UV / ocean / plasma / circle / **Gaussian network** |
-| **Island** | Shader-shaded ground plane under the cube (Gaussian look also tints it) |
-| **Distant land** | Horizon hills / shore silhouette |
-| **Ocean / sky** | sp03 waves + clouds + atmosphere |
-| **Folds** | J Julia · M Mandelbrot · 0 off |
-| **Lesson panel** | Optional F2 — curriculum `.slang` text |
-| **Hierarchy / Inspector** | Optional F1 — decluttered by default |
+| **Ocean** | ShaderToy-style raymarched water (sp03 spirit), ethereal retune |
+| **Distant land** | Computer-FBM hills / cliffs |
+| **Sky** | Procedural dome — clouds + sun + haze |
+| **Canvases** | Center plane (double-sided), sphere left, cube right — shared look bank |
+| **Bank** | UV → … → Physical → paint → school ports (circle / shaping / patterns) |
+| **Audio** | Soft delta-wave beat on **Ch0 UV** only (**M** mute) |
+| **Pin** | **F3** → Vibration Modes lattices (Iteration 2) |
 
-No Shader Man · no WASD walk · no beacon gameplay.
+No Shader Man · no ORCA / PathTracer as primary · no claim of Omniverse Kit hosting.
 
 ### Controls
 
 | Input | Action |
 |-------|--------|
-| **RMB drag** | Orbit camera around the cube |
-| **Wheel** | Zoom |
-| **[ ]** or **← →** (panels closed) | Bank lesson looks on the cube |
-| **J** / **M** / **0** | Julia fold / Mandelbrot burst / folds off |
-| **P** | Light presets |
-| **L** | Optional 2D live editor for active lesson |
-| **F1** | Toggle Hierarchy + Inspector |
-| **F2** | Toggle Lesson code panel |
-| **1 / 2 / 3** | Transform tool (with F1 open): Move / Rotate / Scale |
+| **RMB drag** | Orbit (default) / look (Fly) |
+| **Wheel** | Zoom (Orbit mode) |
+| **WASD QE** | Fly move · **Shift** faster |
+| **Tab** | Cycle **Orbit** ↔ **Fly** |
+| **[ ]** | Bank looks |
+| **1–9** | Chapters 0–8 |
+| **0** | Chapter 9 |
+| **-** | Chapter 10 |
+| **=** | Cycle chapters 11–15 |
+| **F1** | Menus (show / **Movement** / env / water / mute) |
+| **F2** | Chapter / station tip |
+| **F3** | Temple ↔ Vibration Modes |
+| **M** | Mute audio |
+| **F5** | Hot-reload shaders |
+| **V** / **,** **.** | Waves / amp — Vibration mode only |
 
-### Lessons on the cube (`[` `]`)
+**Movement modes** (Iteration 4): **Orbit** (default) · **Fly**. Switch with **Tab** or F1 → Movement.
 
-| Look | Title | Notes |
-|------|-------|-------|
-| 0 | Hello UV | Analytic UV faces |
-| 1 | Ocean world | Micro sp03 on cube |
-| 2 | Shaping / plasma | Plasma energy |
-| 3 | Circle / polar | Polar ring |
-| 4 | **Gaussian network** | 3D sibling of `sp06_gsplat2d` |
+### Chapters (`[` `]`)
 
-**Gaussian network knobs** (F1 → select Morph Cube or Island, or F2 Lesson panel when look 4 is active):
+| # | Title | Notes |
+|---|-------|--------|
+| 0 | Hello UV | monkey — delta-wave audio |
+| 1 | World normals | monkey |
+| 2 | Lambert | classic diffuse |
+| 3 | Blinn-Phong | classic specular |
+| 4 | **Physical** | GGX analytic |
+| 5–12 | Paint / neural / mixes | ladder |
+| 13 | Circle (sp02) | playground |
+| 14 | Shaping (BoS) | school |
+| 15 | Patterns (BoS) | school |
 
-| Param | Meaning |
-|-------|---------|
-| Blob count | 1–8 Gaussians in the mixture |
-| Sigma | Base spread |
-| Amplitude | Per-blob strength |
-| Layer depth | Stack separation along face depth |
-| Mix / gain | Network blend weight |
-| Anim speed | Orbit / drift of centers |
-| Spread XYZ | Anisotropic sigma scales |
-| Color A / B / C | Palette cycling across blobs |
+Sources: `native/samples/VernacularViewport/` · `lessons/temple_env.slang` · `lessons/shading_ladder.slang`
 
-2D source of record: `labs/slang_playground/shaders/sp06_gsplat2d.slang` (also NG03 fit: `labs/neural_gfx_afternoon/shaders/ng03_gaussian_fit.slang`).
+### Exit checks
 
-### Later (planned)
-
-TTS speak blurbs → NPU/local LLM generate text → hot-reload edited slang into the cube pass → SAM — same plan doc.
+| Check | Pass |
+|-------|------|
+| Ocean + land + sky read as one place | Orbit out; haze soft |
+| Plane / sphere / cube | Sphere+cube do not cover plane |
+| `[` `]` Ch0 UV | Looks update on all three canvases |
+| F1 env / water | Sun, haze, chop change the world |
+| F3 | Vibration Modes grids restore |
+| M on Ch0 | Tone mutes; graphics keep running |
 
 ---
 
@@ -93,16 +103,18 @@ python -m slang_falcon.live
 
 Prefer **F11**; avoid **F10**.
 
-**Color panel:** when the entry declares color-like `float3`/`float4` params (`color`, `albedo`, `tint`, `color_a`/`color_b`, …), a strip under the lesson banner exposes swatches + HSV + RGB. Hover `float3` / the param name in the editor to focus that picker. Try `slang_playground/sp01_simple_color` or `bos/03_colors`. **Simple Image** (`sp16_simple_image`) samples `labs/slang_playground/assets/cowboy_hat.png`.
-
 ---
 
 ## Breakage
 
 | Symptom | Fix |
 |---------|-----|
-| `gPad` / No member | Rebuild — C++ CB must match `.3d.slang` |
+| `gPad` / No member / wrong look | Rebuild — C++ CB must match `.3d.slang` |
 | Failed to link | Analytic path only (no `alphaTest`) |
+| Include `temple_env.slang` / ladder missing | `-Build` syncs `lessons/` into shader cache |
+| HUD dumps `!"#$%` | ASCII-only HUD (already sanitized) |
 | Stale shaders | `-Build` + delete `bin/Release/.shadercache` |
+| Exe locked | Kill `VernacularViewport.exe` then rebuild |
+| No audio | WASAPI fail-soft — check F1 status; graphics OK |
 
-*Pinned: abstract studio · [ ] bank lessons · J/M folds · RMB orbit · Gaussian network look 4.*
+*Pinned: Temple School primary · Vibration Modes on F3 · analytic raster · Omniverse compose later · no ORCA.*

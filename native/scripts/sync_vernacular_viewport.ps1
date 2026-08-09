@@ -31,6 +31,15 @@ else {
     Write-Host "Samples/CMakeLists.txt already lists VernacularViewport"
 }
 
+# Also sync shaders into Source tree destination (already copied via Copy-Item * above,
+# but ensure lessons/ lands even if Copy-Item was shallow in older runs).
+$lessonsSrcSync = Join-Path $SampleSrc "lessons"
+$lessonsDstSync = Join-Path $SampleDst "lessons"
+if (Test-Path $lessonsSrcSync) {
+    New-Item -ItemType Directory -Force -Path $lessonsDstSync | Out-Null
+    Copy-Item -Force (Join-Path $lessonsSrcSync "*") $lessonsDstSync
+}
+
 if ($Configure) {
     Push-Location $FalcorRoot
     try {
@@ -90,6 +99,13 @@ if ($Build) {
     $shaderDst = Join-Path $binRoot "$Config\shaders\Samples\VernacularViewport"
     New-Item -ItemType Directory -Force -Path $shaderDst | Out-Null
     Copy-Item -Force (Join-Path $SampleSrc "VernacularViewport.3d.slang") $shaderDst
+    $lessonsSrc = Join-Path $SampleSrc "lessons"
+    $lessonsDst = Join-Path $shaderDst "lessons"
+    if (Test-Path $lessonsSrc) {
+        New-Item -ItemType Directory -Force -Path $lessonsDst | Out-Null
+        Copy-Item -Force (Join-Path $lessonsSrc "*") $lessonsDst
+        Write-Host "Synced lesson kernels -> $lessonsDst"
+    }
     Write-Host "Synced runtime shader -> $shaderDst"
 
     $ext = Join-Path $binRoot "$Config\python\falcor\falcor_ext.cp310-win_amd64.pyd"

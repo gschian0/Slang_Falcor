@@ -42,3 +42,7 @@ Direct. Empowering. Short on rant, long on runnable labs. Compare with commercia
 ## Companion parable
 
 [How to have robots steal coffee from Babylon on their own](companion/robots_steal_coffee_from_babylon.md) — allegory for open-stack autonomy (Babylon = lock-in; robot = your pipeline; 2026: coffee → Yerba Matte / French Press = translate closed vocabulary into VERNACULAR). Agency starts when the lamps stay on — compilers, docs, open weights — and you **read the machine yourself** instead of renting interpreters.
+
+Side story: [Robot Pinocchio goes rogue](companion/robot_pinocchio_goes_rogue.md) — good system, too much information, focus as the string that keeps the robot real.
+
+Questbook: [Leaf & stem field guide](companion/questbook.md) — playground lessons as side-quests (sacred jobs → matrix affinity → living craft).

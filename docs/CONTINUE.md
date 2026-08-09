@@ -2,8 +2,9 @@
 
 > Repo root may be renamed (`Slang_Falcon` → Falcor / `Slang_Falcor`, etc.). Prefer **relative paths**. Cursor often also reads [`AGENTS.md`](../AGENTS.md) at repo root.
 
-**Date pinned:** 2026-08-03  
-**Round 1:** complete — [`ROUND1.md`](ROUND1.md)
+**Date pinned:** 2026-08-04  
+**Round 1:** complete — [`ROUND1.md`](ROUND1.md)  
+**3D show:** Temple of Secret Knowledge (Iteration 3) — Vibration Modes pinned (Iteration 2, `F3`)
 
 ---
 
@@ -17,6 +18,8 @@
 | **Manifesto** | [`manifesto.md`](manifesto.md) |
 | **Companion allegory** | [`companion/robots_steal_coffee_from_babylon.md`](companion/robots_steal_coffee_from_babylon.md) — closed-stack “coffee” → open Yerba Matte / VERNACULAR |
 | **Round 1 status** | [`ROUND1.md`](ROUND1.md) |
+| **3D codebook** | [`codebook/never_ending_slang.md`](codebook/never_ending_slang.md) — Temple (active) · Vibration Modes (pinned) |
+| **Omniverse** | [`plans/vernacular-omniverse-bridge.md`](plans/vernacular-omniverse-bridge.md) — compose later; not Kit today |
 
 Teaching story: teacher → small MLP in shaders (Slang autodiff + SlangPy) → inference in-shader — not closed-toolkit lock-in.
 
@@ -50,10 +53,13 @@ Teaching story: teacher → small MLP in shaders (Slang autodiff + SlangPy) → 
 | Plan | Path |
 |------|------|
 | VERNACULAR product face | [`plans/vernacular.md`](plans/vernacular.md) |
+| 3D environment shading school *(Temple = Iteration 3 active)* | [`plans/vernacular-3d-lesson-world.md`](plans/vernacular-3d-lesson-world.md) |
+| Omniverse compose note | [`plans/vernacular-omniverse-bridge.md`](plans/vernacular-omniverse-bridge.md) |
 | Falcor viewport + SAM | [`plans/falcor-viewport-sam.md`](plans/falcor-viewport-sam.md) |
 | Vsynth-style feedback | [`plans/vsynth-feedback.md`](plans/vsynth-feedback.md) |
 | LLM + SlangTorch realtime | [`plans/llm-slang-torch-realtime.md`](plans/llm-slang-torch-realtime.md) |
 | Live playground polish | [`plans/live-playground-polish.md`](plans/live-playground-polish.md) |
+| Viewport iterations | [`plans/vernacular-viewport-iterations.md`](plans/vernacular-viewport-iterations.md) |
 
 Also: [`roadmap.md`](roadmap.md)
 
@@ -61,7 +67,8 @@ Also: [`roadmap.md`](roadmap.md)
 
 - `native/` — weight load (`SFMLP001`), `NeuralBrdfPass` stubs, hot-reload, CMake hooks
 - Falcor **8.0** may already be cloned under `native/external/Falcor` (gitignored) via `native/scripts/fetch_falcor.ps1`
-- Phase 0 scaffold + stub app sketch exists; **mesh viewport NOT done** (no green 3D window yet)
+- **`VernacularViewport` primary show:** Temple of Secret Knowledge (ocean / land / sky + three canvases)
+- **Pinned:** Vibration Modes of Cube — `F3` / `ShowMode::VibrationModes` (Iteration 2)
 - Details: [`../native/README.md`](../native/README.md)
 
 ### Git
@@ -76,19 +83,22 @@ Also: [`roadmap.md`](roadmap.md)
 |-------|----------|
 | **Shader-only fullscreen (F10 / cyan)** | Can **black out** the display. Use **F11 / green** only. Fix later; **do not** bikeshed live chrome unless asked. |
 | Folder rename | May leave `Slang_Falcon`; rename manually when Cursor workspace lock allows. |
-| Falcor mesh viewport | Phase 0 in progress — **this is the next coding milestone**. |
+| Vibration Modes | Pinned Iteration 2 — keep behind `F3`; do not delete without documenting restore. |
+| Omniverse | Falcor SampleApp only today — see bridge note. |
 
 ---
 
 ## NEXT (true priority)
 
-1. **Falcor 3D Phase 0** — `VernacularViewport` sample + codebook:
+1. **Temple of Secret Knowledge** (primary 3D show) — harden ocean/land/sky + canvas bank:
    - Sources: `native/samples/VernacularViewport/`
    - Codebook: [`codebook/never_ending_slang.md`](codebook/never_ending_slang.md)
-   - Build: `native/scripts/sync_vernacular_viewport.ps1 -Configure -Build` (see [`../native/README.md`](../native/README.md) § D)
-   - Exit: navigable Falcor window, Slang chapters on meshes, F5 hot-reload — **no SAM yet**
-2. Then Phase 1+ of [`plans/falcor-viewport-sam.md`](plans/falcor-viewport-sam.md) (viewport capture → SAM-on-viewport, etc.)
-3. **Do not restart** live playground / Mac chrome / wobble polish unless the user asks
+   - Build: `native/scripts/sync_vernacular_viewport.ps1 -Build` (see [`RUNBOOK.md`](RUNBOOK.md))
+   - Optional: richer school ports, USD export sketch, audio polish
+2. Vibration Modes remain one `F3` away — extend only if asked
+3. Later: SAM · inline AI image/post · Omniverse USD path
+4. **Do not restart** live playground / Mac chrome / wobble polish unless the user asks
+5. **No** ORCA / PathTracer / Emerald Square as the primary loop
 
 ---
 
@@ -100,31 +110,15 @@ Paths assume repo root. Activate venv first if needed: `.\.venv\Scripts\Activate
 # Live curriculum (VERNACULAR)
 python -m slang_falcon.lessons
 python -m slang_falcon.live --lesson 0
-# vernacular --lesson 0   # after pip install -e .
 # Prefer F11 window FS; avoid F10 shader-only FS
 
-# Examples
-python -m slang_falcon.live --lesson bos/00_hello
-python -m slang_falcon.live --lesson slang_playground/sp01_simple_color
-python -m slang_falcon.live --lesson slang_playground/sp16_simple_image
-python -m slang_falcon.live --lesson neural/n01_function_to_network
-python -m slang_falcon.live --lesson diffslang/d01_differentiable_attr
-
-# Train BRDF MLP
-python -m slang_falcon.train_brdf --steps 200 --out assets/weights/brdf_mlp.bin
-python -m slang_falcon.infer --weights assets/weights/brdf_mlp.bin --out assets/output/brdf_compare.png
+# Native 3D show
+cd native
+powershell -ExecutionPolicy Bypass -File .\scripts\sync_vernacular_viewport.ps1 -Build
+# Run: native\external\Falcor\build\windows-vs2022\bin\Release\VernacularViewport.exe
 
 # Smoke
 pytest -q
-
-# Native scaffold (no Falcor)
-cd native
-cmake -B build -G "Visual Studio 17 2022" -A x64 -DSF_BUILD_STANDALONE=ON
-cmake --build build --config Release
-.\build\Release\SlangFalconNative.exe --weights ..\assets\weights\brdf_mlp.bin
-
-# Fetch Falcor 8.0 (large) then configure — see native/README.md
-powershell -ExecutionPolicy Bypass -File .\scripts\fetch_falcor.ps1
 ```
 
 Round 1 changelog: [`ROUND1.md`](ROUND1.md).
@@ -133,8 +127,8 @@ Round 1 changelog: [`ROUND1.md`](ROUND1.md).
 
 ## How to continue (first actions for the next agent)
 
-1. Read [`RUNBOOK.md`](RUNBOOK.md) first — exact run / rebuild / fix table.
-2. Then this file + [`ROUND1.md`](ROUND1.md) + [`plans/falcor-viewport-sam.md`](plans/falcor-viewport-sam.md).
-3. 3D show: `native/scripts/sync_vernacular_viewport.ps1 -Build` then `VernacularViewport.exe` (paths in RUNBOOK).
+1. Read [`RUNBOOK.md`](RUNBOOK.md) first — exact run / rebuild / controls.
+2. Then [`codebook/never_ending_slang.md`](codebook/never_ending_slang.md) + this file.
+3. 3D show: `native/scripts/sync_vernacular_viewport.ps1 -Build` then `VernacularViewport.exe`.
 4. Do **not** touch F10 / live UI polish unless asked.
 5. Do **not** commit or push unless the user explicitly asks.
