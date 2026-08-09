@@ -61,6 +61,23 @@ if ($Build) {
         throw "Packman cmake missing - run with -Configure first."
     }
 
+    # New sample .cpp files require a CMake reconfigure (ZERO_CHECK is easy to miss).
+    $vcx = Join-Path $buildDir "Source\Samples\VernacularViewport\VernacularViewport.vcxproj"
+    $sampleCmake = Join-Path $SampleDst "CMakeLists.txt"
+    $needReconfigure = -not (Test-Path $vcx)
+    if (-not $needReconfigure) {
+        if ((Get-Item $sampleCmake).LastWriteTime -gt (Get-Item $vcx).LastWriteTime) {
+            $needReconfigure = $true
+        }
+    }
+    if ($needReconfigure) {
+        Write-Host "Sample CMakeLists newer than vcxproj - reconfiguring..."
+        & $cmake $buildDir
+        if ($LASTEXITCODE -ne 0) {
+            throw "CMake reconfigure failed ($LASTEXITCODE)"
+        }
+    }
+
     # SampleApp::run() always starts embedded Python and imports falcor.falcor_ext.
     Write-Host "Building FalcorPython (falcor_ext) + plugins ($Config)..."
     & $cmake --build $buildDir --config $Config --target FalcorPython

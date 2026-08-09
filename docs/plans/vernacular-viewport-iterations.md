@@ -232,3 +232,60 @@ cd D:\WindowsProgramming\Slang_Falcor\native\external\Falcor\build\windows-vs202
 |------|-----------|
 | Normalized look gain ~2.8 | Artists want snappier/slower — tweak `kLookGain` only |
 | Tab + F1 Orbit/Fly | User asks for Falcor built-in Orbiter/FirstPerson instead |
+
+---
+
+## Iteration 5 — 2026-08-09
+
+### Intent / what user asked
+
+Real **spatial audio engine** on VernacularViewport: spherical (omni) emission, distance attenuation, Doppler from relative velocity. Camera = listener. Keep **M** mute. Fail-soft (never block graphics). No FMOD / Omniverse / GPU audio / shader rewrite / commit.
+
+### What changed
+
+| Area | Behavior |
+|------|----------|
+| Engine | `VernacularSoundscape` — host physics + WASAPI shared mix (float32 / pcm16) |
+| Listener | Eye pos / forward / up + finite-diff velocity from Orbit/Fly |
+| Bowl | 3 sines (~0.5–4 Hz beat) on lesson plane (Temple) or vibe center; louder when looking at / near |
+| Atmosphere | Quiet filtered-noise bed (Temple, distant) |
+| Chirps | Slots 2–4 reserved, silent |
+| Distance | `gain = clamp(ref/max(d,min),0,1)` then fade to 0 by maxDist (`min=1.5` `ref=4` `max=36` m) |
+| Pan | Equal-power from listener-space azimuth |
+| Doppler | `f' = f*(c+vL)/(c+vS)`, `c=343`, clamp 0.88–1.15; sources static; listener motion counts |
+| Chapters | Ch0 = classic ~120/122 Hz; others slight f0 shift (same source) |
+| F1 | Mute + master gain + Doppler checkbox + debug line |
+| Backend | Extended Iteration 3 WASAPI instead of vendoring miniaudio into Falcor `/WX` |
+
+**Preserved:** Temple default, F3 Vibration pin, Orbit/Fly, **M** mute, analytic shaders untouched.
+
+### Files
+
+| Path | Role |
+|------|------|
+| `native/samples/VernacularViewport/VernacularSoundscape.{h,cpp}` | Engine |
+| `native/samples/VernacularViewport/VernacularViewport.{h,cpp}` | Camera → listener / F1 / lifecycle |
+| `native/samples/VernacularViewport/CMakeLists.txt` | New compile unit |
+| `docs/plans/vernacular-viewport-spatial-audio.md` | Design note |
+
+### Rebuild / run
+
+```powershell
+cd D:\WindowsProgramming\Slang_Falcor\native
+powershell -ExecutionPolicy Bypass -File .\scripts\sync_vernacular_viewport.ps1 -Build
+
+cd D:\WindowsProgramming\Slang_Falcor\native\external\Falcor\build\windows-vs2022\bin\Release
+.\VernacularViewport.exe
+```
+
+### Keep vs revert
+
+| Keep | Revert if |
+|------|-----------|
+| Spatial bowl on all chapters (f0 shift) | User wants Ch0-only silence again |
+| WASAPI backend | Swap to miniaudio once isolated from `/WX` |
+| Doppler clamp 0.88–1.15 | Artists want wilder fly-by |
+
+### Stubs / later
+
+Bird chirps · HRTF · moving emitters · Kit/Omniverse audio · Slang PCM.

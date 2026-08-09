@@ -18,7 +18,7 @@
 - Distant computer-FBM land  
 - Procedural sky (clouds + sun) + haze  
 - Hero canvases: **plane** (center, double-sided), **sphere** (left), **cube** (right) — shared chapter look  
-- Delta-wave tone on Ch0 UV (**M** mute)
+- Spatial singing-bowl on the lesson plane (distance + pan + Doppler; **M** mute) — Iteration 5
 
 ## Vibration Modes of Cube (pinned)
 
@@ -39,7 +39,7 @@
 
 | Key | Chapter | Look |
 |-----|---------|------|
-| 1 | Ch0 Hello UV | UV debug (+ audio in temple) |
+| 1 | Ch0 Hello UV | UV debug (+ spatial bowl) |
 | 2 | Ch1 Normals | normal remap |
 | 3 | Ch2 Lambert | diffuse clay |
 | 4 | Ch3 Blinn | specular lobe |

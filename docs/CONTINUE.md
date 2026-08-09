@@ -4,7 +4,7 @@
 
 **Date pinned:** 2026-08-04  
 **Round 1:** complete — [`ROUND1.md`](ROUND1.md)  
-**3D show:** Temple of Secret Knowledge (Iteration 3) — Vibration Modes pinned (Iteration 2, `F3`)
+**3D show:** Temple of Secret Knowledge (Iteration 3) — Vibration Modes pinned (Iteration 2, `F3`) · Orbit/Fly (Iteration 4) · spatial audio (Iteration 5)
 
 ---
 
@@ -94,7 +94,8 @@ Also: [`roadmap.md`](roadmap.md)
    - Sources: `native/samples/VernacularViewport/`
    - Codebook: [`codebook/never_ending_slang.md`](codebook/never_ending_slang.md)
    - Build: `native/scripts/sync_vernacular_viewport.ps1 -Build` (see [`RUNBOOK.md`](RUNBOOK.md))
-   - Optional: richer school ports, USD export sketch, audio polish
+   - Audio: Iteration 5 `VernacularSoundscape` (spatial bowl / distance / Doppler) — [`plans/vernacular-viewport-spatial-audio.md`](plans/vernacular-viewport-spatial-audio.md)
+   - Optional: richer school ports, USD export sketch, chirp sources / HRTF
 2. Vibration Modes remain one `F3` away — extend only if asked
 3. Later: SAM · inline AI image/post · Omniverse USD path
 4. **Do not restart** live playground / Mac chrome / wobble polish unless the user asks

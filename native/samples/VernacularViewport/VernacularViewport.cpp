@@ -19,17 +19,6 @@
 #include <string>
 #include <vector>
 
-#if FALCOR_WINDOWS
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#include <mmdeviceapi.h>
-#include <audioclient.h>
-#include <functiondiscoverykeys_devpkey.h>
-#pragma comment(lib, "ole32.lib")
-#endif
-
 FALCOR_EXPORT_D3D12_AGILITY_SDK
 
 namespace
@@ -97,7 +86,7 @@ const Glyph* findGlyph(char c)
 const VernacularViewport::ChapterStation kStations[16] = {
     {"Ch0 Hello UV", "monkey",
      "See the surface — UV coordinates. Temple canvases share one look.",
-     "Delta-wave tone on this chapter (M mute). [ ] banks the ladder."},
+     "Singing-bowl / delta bed on the lesson plane (M mute). Orbit to hear distance + Doppler."},
     {"Ch1 World normals", "monkey",
      "See orientation — normals remapped so faces read in space.",
      "Orbit: same geometry, new look."},
@@ -173,153 +162,6 @@ ref<TriangleMesh> createOceanGrid(int segs, float size)
     }
     return mesh;
 }
-
-#if FALCOR_WINDOWS
-// Two close sines → ~2 Hz beat (delta-wave range). Graphics never waits on this.
-void audioThreadMain(std::atomic<bool>* run, std::atomic<bool>* active, std::string* status)
-{
-    HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-    const bool comOk = SUCCEEDED(hr) || hr == RPC_E_CHANGED_MODE;
-    if (!comOk)
-    {
-        *status = "audio: COM init failed";
-        return;
-    }
-
-    IMMDeviceEnumerator* pEnum = nullptr;
-    hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&pEnum);
-    if (FAILED(hr) || !pEnum)
-    {
-        *status = "audio: no enumerator";
-        if (comOk && hr != RPC_E_CHANGED_MODE)
-            CoUninitialize();
-        return;
-    }
-
-    IMMDevice* pDevice = nullptr;
-    hr = pEnum->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
-    pEnum->Release();
-    if (FAILED(hr) || !pDevice)
-    {
-        *status = "audio: no endpoint";
-        if (SUCCEEDED(hr) == false && comOk)
-            CoUninitialize();
-        return;
-    }
-
-    IAudioClient* pClient = nullptr;
-    hr = pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pClient);
-    pDevice->Release();
-    if (FAILED(hr) || !pClient)
-    {
-        *status = "audio: activate failed";
-        CoUninitialize();
-        return;
-    }
-
-    WAVEFORMATEX* pWfx = nullptr;
-    hr = pClient->GetMixFormat(&pWfx);
-    if (FAILED(hr) || !pWfx)
-    {
-        *status = "audio: mix format failed";
-        pClient->Release();
-        CoUninitialize();
-        return;
-    }
-
-    const REFERENCE_TIME bufferDuration = 10000000; // 1s
-    hr = pClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, bufferDuration, 0, pWfx, nullptr);
-    if (FAILED(hr))
-    {
-        *status = "audio: init failed";
-        CoTaskMemFree(pWfx);
-        pClient->Release();
-        CoUninitialize();
-        return;
-    }
-
-    UINT32 bufferFrames = 0;
-    pClient->GetBufferSize(&bufferFrames);
-    IAudioRenderClient* pRender = nullptr;
-    hr = pClient->GetService(__uuidof(IAudioRenderClient), (void**)&pRender);
-    if (FAILED(hr) || !pRender)
-    {
-        *status = "audio: render client failed";
-        CoTaskMemFree(pWfx);
-        pClient->Release();
-        CoUninitialize();
-        return;
-    }
-
-    pClient->Start();
-    *status = "audio: WASAPI delta OK";
-
-    const double sampleRate = pWfx->nSamplesPerSec > 0 ? double(pWfx->nSamplesPerSec) : 48000.0;
-    const int channels = std::max(1, int(pWfx->nChannels));
-    // Shared mix format is typically float32 (WAVE_FORMAT_EXTENSIBLE); fall back to silence otherwise.
-    const bool isFloat = (pWfx->wBitsPerSample == 32);
-    double phaseA = 0.0, phaseB = 0.0;
-    const double freqA = 120.0;
-    const double freqB = 122.0; // ~2 Hz beat
-    const double twoPi = 6.283185307179586;
-
-    while (run->load())
-    {
-        UINT32 padding = 0;
-        pClient->GetCurrentPadding(&padding);
-        UINT32 available = bufferFrames - padding;
-        if (available < 256)
-        {
-            Sleep(5);
-            continue;
-        }
-
-        BYTE* pData = nullptr;
-        if (FAILED(pRender->GetBuffer(available, &pData)) || !pData)
-        {
-            Sleep(5);
-            continue;
-        }
-
-        const bool tone = active->load();
-        if (isFloat)
-        {
-            float* samples = reinterpret_cast<float*>(pData);
-            for (UINT32 i = 0; i < available; ++i)
-            {
-                float s = 0.f;
-                if (tone)
-                {
-                    s = 0.08f * float(std::sin(phaseA) + std::sin(phaseB));
-                    phaseA += twoPi * freqA / sampleRate;
-                    phaseB += twoPi * freqB / sampleRate;
-                    if (phaseA > twoPi)
-                        phaseA -= twoPi;
-                    if (phaseB > twoPi)
-                        phaseB -= twoPi;
-                }
-                for (int c = 0; c < channels; ++c)
-                    samples[i * channels + c] = s;
-            }
-        }
-        else
-        {
-            // Silence / zero if not float mix — still don't crash
-            std::memset(pData, 0, size_t(available) * pWfx->nBlockAlign);
-        }
-
-        pRender->ReleaseBuffer(available, tone ? 0 : AUDCLNT_BUFFERFLAGS_SILENT);
-        Sleep(8);
-    }
-
-    pClient->Stop();
-    pRender->Release();
-    CoTaskMemFree(pWfx);
-    pClient->Release();
-    CoUninitialize();
-    *status = "audio: stopped";
-}
-#endif
 } // namespace
 
 VernacularViewport::VernacularViewport(const SampleAppConfig& config) : SampleApp(config) {}
@@ -409,34 +251,83 @@ void VernacularViewport::addCubeInstance(SceneBuilder& builder, MeshID meshID, c
 
 void VernacularViewport::initAudio()
 {
-#if FALCOR_WINDOWS
-    if (mAudioRun.load())
-        return;
-    mAudioRun = true;
-    mAudioActive = false;
-    mAudioThread = std::thread(
-        audioThreadMain, &mAudioRun, &mAudioActive, &mAudioStatus
-    );
-    mAudioOk = true;
-#else
-    mAudioOk = false;
-    mAudioStatus = "audio: Windows-only stub";
-#endif
+    // Fail-soft: never throw / never block the GPU path if the endpoint is missing.
+    mSoundscape.start();
 }
 
 void VernacularViewport::shutdownAudio()
 {
-    mAudioActive = false;
-    mAudioRun = false;
-    if (mAudioThread.joinable())
-        mAudioThread.join();
-    mAudioOk = false;
+    mSoundscape.stop();
 }
 
-void VernacularViewport::updateAudioState()
+void VernacularViewport::updateSoundscape(float dt)
 {
-    const bool want = (mShowMode == ShowMode::TempleSchool) && (mChapter == 0) && !mAudioMute && mAudioOk;
-    mAudioActive = want;
+    mSoundscape.setMuted(mAudioMute);
+    mSoundscape.setMasterGain(mAudioMasterGain);
+    mSoundscape.setDopplerEnabled(mAudioDoppler);
+
+    if (!mpCamera)
+        return;
+
+    const float3 eye = mpCamera->getPosition();
+    const float3 forward = lookDirFromYawPitch();
+    const float3 up = float3(0.f, 1.f, 0.f);
+    float3 vel = float3(0.f);
+    if (mAudioHaveLastEye && dt > 1e-4f && dt < 0.25f)
+        vel = (eye - mAudioLastEye) / dt;
+    mAudioLastEye = eye;
+    mAudioHaveLastEye = true;
+
+    VernacularSoundscape::Listener listener;
+    listener.position = {eye.x, eye.y, eye.z};
+    listener.forward = {forward.x, forward.y, forward.z};
+    listener.up = {up.x, up.y, up.z};
+    listener.velocity = {vel.x, vel.y, vel.z};
+    mSoundscape.setListener(listener);
+
+    const float3 bowlPos = (mShowMode == ShowMode::TempleSchool) ? float3(0.f, 2.05f, 0.f) : float3(0.f, 1.2f, -0.5f);
+    const float3 toBowl = bowlPos - eye;
+    const float bowlDist = length(toBowl);
+    const float3 bowlDir = (bowlDist > 1e-4f) ? (toBowl / bowlDist) : forward;
+    const float lookAlign = std::clamp(dot(forward, bowlDir), 0.f, 1.f);
+    const float nearF = std::clamp(1.f - bowlDist / 14.f, 0.f, 1.f);
+    const float lookBoost = 0.70f + 0.50f * lookAlign + 0.30f * nearF;
+
+    // Ch0 = classic ~120/122 Hz delta (~2 Hz beat). Other chapters: slight f0 shift, same source.
+    const float f0 = 120.f + float(mChapter) * 3.25f;
+    const float beat = std::clamp(2.0f + float(mChapter) * 0.07f, 0.5f, 4.f);
+
+    VernacularSoundscape::Source bowl;
+    bowl.enabled = true;
+    bowl.kind = VernacularSoundscape::SourceKind::Bowl;
+    bowl.position = {bowlPos.x, bowlPos.y, bowlPos.z};
+    bowl.velocity = {0.f, 0.f, 0.f};
+    bowl.freqs[0] = f0;
+    bowl.freqs[1] = f0 + beat;
+    bowl.freqs[2] = f0 * 2.01f;
+    bowl.amps[0] = 0.09f;
+    bowl.amps[1] = 0.09f;
+    bowl.amps[2] = 0.028f;
+    bowl.lookBoost = lookBoost;
+    mSoundscape.setSource(VernacularSoundscape::kBowlSlot, bowl);
+
+    VernacularSoundscape::Source atmosphere;
+    atmosphere.enabled = (mShowMode == ShowMode::TempleSchool);
+    atmosphere.kind = VernacularSoundscape::SourceKind::Atmosphere;
+    atmosphere.position = {0.f, 12.f, -28.f}; // distant ocean/sky bed
+    atmosphere.velocity = {0.f, 0.f, 0.f};
+    atmosphere.amps[0] = 0.032f;
+    atmosphere.lookBoost = 1.f;
+    mSoundscape.setSource(VernacularSoundscape::kAtmosphereSlot, atmosphere);
+
+    // Chirp hooks (slots 2–4): reserved / silent this pass.
+    for (int i = 0; i < VernacularSoundscape::kChirpCount; ++i)
+    {
+        VernacularSoundscape::Source chirp;
+        chirp.enabled = false;
+        chirp.kind = VernacularSoundscape::SourceKind::ChirpHook;
+        mSoundscape.setSource(VernacularSoundscape::kChirpSlot0 + i, chirp);
+    }
 }
 
 void VernacularViewport::onLoad(RenderContext* /*pRenderContext*/)
@@ -444,6 +335,12 @@ void VernacularViewport::onLoad(RenderContext* /*pRenderContext*/)
     initAudio();
     buildVernacularScene(getTargetFbo().get());
     mLastFrameTime = getGlobalClock().getTime();
+    mAudioHaveLastEye = false;
+}
+
+void VernacularViewport::onShutdown()
+{
+    shutdownAudio();
 }
 
 void VernacularViewport::onResize(uint32_t width, uint32_t height)
@@ -458,8 +355,8 @@ void VernacularViewport::switchShowMode(ShowMode mode)
         return;
     mShowMode = mode;
     buildVernacularScene(getTargetFbo().get());
+    mAudioHaveLastEye = false; // avoid a one-frame Doppler spike after the camera jump
     mStatusMsg = (mode == ShowMode::TempleSchool) ? "Show: Temple School" : "Show: Vibration Modes (pinned)";
-    updateAudioState();
 }
 
 void VernacularViewport::buildTempleScene(SceneBuilder& builder, const Fbo* pTargetFbo)
@@ -892,12 +789,14 @@ void VernacularViewport::onGuiRender(Gui* pGui)
         w.rgbColor("Water color", mWaterColor);
 
         w.separator();
+        w.text("Spatial audio");
         w.checkbox("Mute audio (M)", mAudioMute);
-        w.text(mAudioStatus);
+        w.checkbox("Doppler", mAudioDoppler);
+        w.var("Master gain", mAudioMasterGain, 0.f, 2.f, 0.01f);
+        w.text(mSoundscape.status());
+        w.text(mSoundscape.debugLine());
         if (!mStatusMsg.empty())
             w.text(mStatusMsg);
-
-        updateAudioState();
     }
 
     if (mShowStation)
@@ -914,7 +813,6 @@ void VernacularViewport::onGuiRender(Gui* pGui)
             mChapter = (mChapter + kChapterCount - 1) % kChapterCount;
         if (s.button("Next ]", true))
             mChapter = (mChapter + 1) % kChapterCount;
-        updateAudioState();
     }
 }
 
@@ -930,7 +828,7 @@ void VernacularViewport::onFrameRender(RenderContext* pRenderContext, const ref<
     if (mAnimate)
         mTime = float(now);
     updateCamera(dt);
-    updateAudioState();
+    updateSoundscape(dt);
 
     if (mpScene)
     {
@@ -1039,19 +937,16 @@ bool VernacularViewport::onKeyEvent(const KeyboardEvent& keyEvent)
         {
             mAudioMute = !mAudioMute;
             mStatusMsg = mAudioMute ? "Audio muted" : "Audio unmuted";
-            updateAudioState();
             return true;
         }
         if (keyEvent.key == Input::Key::LeftBracket)
         {
             mChapter = (mChapter + kChapterCount - 1) % kChapterCount;
-            updateAudioState();
             return true;
         }
         if (keyEvent.key == Input::Key::RightBracket)
         {
             mChapter = (mChapter + 1) % kChapterCount;
-            updateAudioState();
             return true;
         }
         if (keyEvent.key == Input::Key::V && mShowMode == ShowMode::VibrationModes)
@@ -1075,19 +970,16 @@ bool VernacularViewport::onKeyEvent(const KeyboardEvent& keyEvent)
         if (keyEvent.key >= Input::Key::Key1 && keyEvent.key <= Input::Key::Key9)
         {
             mChapter = uint32_t(keyEvent.key) - uint32_t(Input::Key::Key1);
-            updateAudioState();
             return true;
         }
         if (keyEvent.key == Input::Key::Key0)
         {
             mChapter = 9;
-            updateAudioState();
             return true;
         }
         if (keyEvent.key == Input::Key::Minus)
         {
             mChapter = 10;
-            updateAudioState();
             return true;
         }
         if (keyEvent.key == Input::Key::Equal)
@@ -1097,7 +989,6 @@ bool VernacularViewport::onKeyEvent(const KeyboardEvent& keyEvent)
                 mChapter = 11;
             else
                 mChapter = mChapter + 1;
-            updateAudioState();
             return true;
         }
     }

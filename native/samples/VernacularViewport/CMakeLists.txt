@@ -3,6 +3,8 @@ add_falcor_executable(VernacularViewport)
 target_sources(VernacularViewport PRIVATE
     VernacularViewport.cpp
     VernacularViewport.h
+    VernacularSoundscape.cpp
+    VernacularSoundscape.h
     VernacularViewport.3d.slang
 )
 

@@ -1,16 +1,15 @@
 // VERNACULAR — Temple of Secret Knowledge (Iteration 3+).
 // Vibration Modes of Cube = Iteration 2, pinned behind ShowMode::VibrationModes.
-// Iteration 4: Orbit/Fly movement fix — docs/plans/vernacular-viewport-iterations.md
+// Iteration 4: Orbit/Fly movement — Iteration 5: VernacularSoundscape spatial audio.
 #pragma once
 
 #include "Falcor.h"
 #include "Core/SampleApp.h"
 #include "Core/Pass/RasterPass.h"
+#include "VernacularSoundscape.h"
 
-#include <atomic>
 #include <memory>
 #include <string>
-#include <thread>
 #include <vector>
 
 using namespace Falcor;
@@ -22,6 +21,7 @@ public:
     ~VernacularViewport() override;
 
     void onLoad(RenderContext* pRenderContext) override;
+    void onShutdown() override;
     void onResize(uint32_t width, uint32_t height) override;
     void onFrameRender(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo) override;
     void onGuiRender(Gui* pGui) override;
@@ -70,7 +70,7 @@ private:
     float3 lookDirFromYawPitch() const;
     void initAudio();
     void shutdownAudio();
-    void updateAudioState();
+    void updateSoundscape(float dt);
 
     ref<Scene> mpScene;
     ref<Camera> mpCamera;
@@ -125,13 +125,13 @@ private:
     uint32_t mMatLand = 0xffffffffu;
     uint32_t mMatCanvas = 0xffffffffu;
 
-    // Delta-wave audio MVP (WASAPI) — Ch0 UV only; mute with M
+    // Iteration 5 — spatial engine (camera = listener). Mute with M.
+    VernacularSoundscape mSoundscape;
     bool mAudioMute = false;
-    bool mAudioOk = false;
-    std::atomic<bool> mAudioRun{false};
-    std::atomic<bool> mAudioActive{false}; // true when Ch0 + unmuted
-    std::thread mAudioThread;
-    std::string mAudioStatus = "audio off";
+    bool mAudioDoppler = true;
+    float mAudioMasterGain = 1.f;
+    float3 mAudioLastEye = float3(0.f);
+    bool mAudioHaveLastEye = false;
 
     std::string mStatusMsg;
 };

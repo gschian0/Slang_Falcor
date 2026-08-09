@@ -6,6 +6,7 @@ You are not guessing. This is the operating sheet.
 **3D show (primary):** Falcor `VernacularViewport` — **Temple of Secret Knowledge** (Iteration 3)  
 **Pinned show:** **Vibration Modes of Cube** (Iteration 2) — `F3`  
 **Camera:** Orbit / Fly (Iteration 4) — `Tab` or F1 → Movement  
+**Audio:** Spatial bowl + distance / Doppler (Iteration 5) — **M** mute  
 **Codebook:** [`codebook/never_ending_slang.md`](codebook/never_ending_slang.md)  
 **Iterations:** [`plans/vernacular-viewport-iterations.md`](plans/vernacular-viewport-iterations.md)  
 **Omniverse:** [`plans/vernacular-omniverse-bridge.md`](plans/vernacular-omniverse-bridge.md) — not Kit today; compose via Slang/USD later
@@ -37,7 +38,7 @@ cd D:\WindowsProgramming\Slang_Falcor\native\external\Falcor\build\windows-vs202
 | **Sky** | Procedural dome — clouds + sun + haze |
 | **Canvases** | Center plane (double-sided), sphere left, cube right — shared look bank |
 | **Bank** | UV → … → Physical → paint → school ports (circle / shaping / patterns) |
-| **Audio** | Soft delta-wave beat on **Ch0 UV** only (**M** mute) |
+| **Audio** | Spatial singing-bowl (plane) + quiet atmosphere; distance + stereo pan + Doppler (**M** mute) |
 | **Pin** | **F3** → Vibration Modes lattices (Iteration 2) |
 
 No Shader Man · no ORCA / PathTracer as primary · no claim of Omniverse Kit hosting.
@@ -55,7 +56,7 @@ No Shader Man · no ORCA / PathTracer as primary · no claim of Omniverse Kit ho
 | **0** | Chapter 9 |
 | **-** | Chapter 10 |
 | **=** | Cycle chapters 11–15 |
-| **F1** | Menus (show / **Movement** / env / water / mute) |
+| **F1** | Menus (show / **Movement** / env / water / mute / gain / Doppler) |
 | **F2** | Chapter / station tip |
 | **F3** | Temple ↔ Vibration Modes |
 | **M** | Mute audio |
@@ -68,7 +69,7 @@ No Shader Man · no ORCA / PathTracer as primary · no claim of Omniverse Kit ho
 
 | # | Title | Notes |
 |---|-------|--------|
-| 0 | Hello UV | monkey — delta-wave audio |
+| 0 | Hello UV | monkey — singing-bowl / delta bed (spatial) |
 | 1 | World normals | monkey |
 | 2 | Lambert | classic diffuse |
 | 3 | Blinn-Phong | classic specular |
@@ -89,7 +90,7 @@ Sources: `native/samples/VernacularViewport/` · `lessons/temple_env.slang` · `
 | `[` `]` Ch0 UV | Looks update on all three canvases |
 | F1 env / water | Sun, haze, chop change the world |
 | F3 | Vibration Modes grids restore |
-| M on Ch0 | Tone mutes; graphics keep running |
+| M | Spatial bowl mutes; graphics keep running |
 
 ---
 
@@ -115,6 +116,6 @@ Prefer **F11**; avoid **F10**.
 | HUD dumps `!"#$%` | ASCII-only HUD (already sanitized) |
 | Stale shaders | `-Build` + delete `bin/Release/.shadercache` |
 | Exe locked | Kill `VernacularViewport.exe` then rebuild |
-| No audio | WASAPI fail-soft — check F1 status; graphics OK |
+| No audio | WASAPI fail-soft — check F1 status / debug line; graphics OK |
 
 *Pinned: Temple School primary · Vibration Modes on F3 · analytic raster · Omniverse compose later · no ORCA.*
