@@ -186,6 +186,40 @@ const char* VernacularViewport::moveModeName() const
     return (mMoveMode == MoveMode::Orbit) ? "Orbit" : "Fly";
 }
 
+const char* VernacularViewport::lightModeName() const
+{
+    switch (mLightMode)
+    {
+    case LightMode::Lambert:
+        return "Lambert";
+    case LightMode::Blinn:
+        return "Blinn";
+    case LightMode::Physical:
+        return "Physical";
+    default:
+        return "Unlit";
+    }
+}
+
+void VernacularViewport::cycleLightMode()
+{
+    mLightMode = LightMode((uint32_t(mLightMode) + 1u) % 4u);
+    mStatusMsg = std::string("Lighting: ") + lightModeName();
+}
+
+void VernacularViewport::captureCubeRotation()
+{
+    Transform rotOnly;
+    rotOnly.setRotationEulerDeg(mCubeEulerDeg);
+    const float4x4 M = rotOnly.getMatrix();
+    const float4 xW = math::mul(M, float4(1.f, 0.f, 0.f, 0.f));
+    const float4 yW = math::mul(M, float4(0.f, 1.f, 0.f, 0.f));
+    const float4 zW = math::mul(M, float4(0.f, 0.f, 1.f, 0.f));
+    mCubeRot0 = float3(xW.x, xW.y, xW.z);
+    mCubeRot1 = float3(yW.x, yW.y, yW.z);
+    mCubeRot2 = float3(zW.x, zW.y, zW.z);
+}
+
 void VernacularViewport::clearFlyKeys()
 {
     mKeyW = mKeyA = mKeyS = mKeyD = mKeyQ = mKeyE = false;
@@ -424,31 +458,40 @@ void VernacularViewport::buildTempleScene(SceneBuilder& builder, const Fbo* pTar
     addHill("HillC", float3(5.f, 2.8f, -55.f), float3(9.f, 5.f, 11.f));
     addHill("CliffW", float3(-40.f, 6.f, -75.f), float3(8.f, 14.f, 6.f));
 
-    // Hero canvases: plane center, sphere left, cube right — none obscure the plane
+    // Hero canvases: square plane center, sphere left, cube right — none obscure the plane.
+    // Unit XZ quad * uniform scale, then -90 X → vertical XY square (Z scale used to be 1 → short rectangle).
+    mPlaneCenter = float3(0.f, 2.05f, 0.f);
+    mPlaneSize = 3.4f;
+    mSphereCenter = float3(-5.2f, 1.9f, 1.1f);
+    mSphereRadius = 0.85f;
+    mCubeCenter = float3(5.2f, 1.9f, 1.1f);
+    mCubeSize = 1.45f;
+    mCubeEulerDeg = float3(8.f, 28.f, -6.f);
+    captureCubeRotation();
     {
         Transform planeX;
-        planeX.setTranslation(float3(0.f, 2.05f, 0.f));
+        planeX.setTranslation(mPlaneCenter);
         planeX.setRotationEulerDeg(float3(-90.f, 0.f, 0.f));
-        planeX.setScaling(float3(3.4f, 3.4f, 1.f));
+        planeX.setScaling(float3(mPlaneSize));
         NodeID n = builder.addNode(SceneBuilder::Node{"LessonPlane", planeX.getMatrix(), float4x4(), float4x4()});
         builder.addMeshInstance(n, planeID);
     }
     {
         Transform sphX;
-        sphX.setTranslation(float3(-5.2f, 1.9f, 1.1f));
+        sphX.setTranslation(mSphereCenter);
         NodeID n = builder.addNode(SceneBuilder::Node{"LessonSphere", sphX.getMatrix(), float4x4(), float4x4()});
         builder.addMeshInstance(n, sphereID);
     }
     {
         Transform cubeX;
-        cubeX.setTranslation(float3(5.2f, 1.9f, 1.1f));
-        cubeX.setRotationEulerDeg(float3(8.f, 28.f, -6.f));
-        cubeX.setScaling(float3(1.45f));
+        cubeX.setTranslation(mCubeCenter);
+        cubeX.setRotationEulerDeg(mCubeEulerDeg);
+        cubeX.setScaling(float3(mCubeSize));
         NodeID n = builder.addNode(SceneBuilder::Node{"LessonCube", cubeX.getMatrix(), float4x4(), float4x4()});
         builder.addMeshInstance(n, cubeID);
     }
 
-    mOrbitTarget = float3(0.f, 2.05f, 0.f);
+    mOrbitTarget = mPlaneCenter;
     mCamYaw = 0.12f;
     mCamPitch = 0.22f;
     mCamDist = 11.0f;
@@ -616,7 +659,7 @@ void VernacularViewport::buildVernacularScene(const Fbo* pTargetFbo)
     createRasterPass();
     updateCamera(0.f);
     mStatusMsg = (mShowMode == ShowMode::TempleSchool)
-                     ? "Temple School | [ ] looks | RMB orbit | Tab move | F1 menus | F3 vibe | M mute"
+                     ? "Temple School | [ ] looks | L light | RMB orbit | Tab move | F1 menus | F3 vibe | M mute"
                      : "Vibration Modes | [ ] chapters | V waves | RMB orbit | Tab move | F3 temple";
 }
 
@@ -725,7 +768,19 @@ void VernacularViewport::setPerFrameVars(const Fbo* /*pTargetFbo*/)
     var["PerFrameCB"]["gWaterChop"] = mWaterChop;
     var["PerFrameCB"]["gWaterAbsorb"] = mWaterAbsorb;
     var["PerFrameCB"]["gWaterColor"] = mWaterColor;
-    var["PerFrameCB"]["gPadW"] = 0.f;
+    var["PerFrameCB"]["gLightMode"] = uint32_t(mLightMode);
+    var["PerFrameCB"]["gPlaneCenter"] = mPlaneCenter;
+    var["PerFrameCB"]["gPlaneSize"] = mPlaneSize;
+    var["PerFrameCB"]["gSphereCenter"] = mSphereCenter;
+    var["PerFrameCB"]["gSphereRadius"] = mSphereRadius;
+    var["PerFrameCB"]["gCubeCenter"] = mCubeCenter;
+    var["PerFrameCB"]["gCubeSize"] = mCubeSize;
+    var["PerFrameCB"]["gCubeRot0"] = mCubeRot0;
+    var["PerFrameCB"]["gPadR0"] = 0.f;
+    var["PerFrameCB"]["gCubeRot1"] = mCubeRot1;
+    var["PerFrameCB"]["gPadR1"] = 0.f;
+    var["PerFrameCB"]["gCubeRot2"] = mCubeRot2;
+    var["PerFrameCB"]["gPadR2"] = 0.f;
 }
 
 void VernacularViewport::onGuiRender(Gui* pGui)
@@ -757,6 +812,17 @@ void VernacularViewport::onGuiRender(Gui* pGui)
         w.text("Tab cycles Orbit / Fly");
         if (mMoveMode == MoveMode::Fly)
             w.var("Fly speed", mFlySpeed, 1.f, 40.f, 0.5f);
+
+        Gui::DropdownList lightList = {
+            {uint32_t(LightMode::Unlit), "Unlit — raw look"},
+            {uint32_t(LightMode::Lambert), "Lambert — N.L temple sun"},
+            {uint32_t(LightMode::Blinn), "Blinn — specular temple sun"},
+            {uint32_t(LightMode::Physical), "Physical — GGX temple sun"},
+        };
+        uint32_t light = uint32_t(mLightMode);
+        if (w.dropdown("Lighting mode", lightList, light))
+            mLightMode = LightMode(light);
+        w.text("L cycles lighting (same sun as sky / ocean)");
 
         if (w.button("< Prev"))
             mChapter = (mChapter + kChapterCount - 1) % kChapterCount;
@@ -856,13 +922,15 @@ void VernacularViewport::onFrameRender(RenderContext* pRenderContext, const ref<
     else
         hud1 << "  |  Vibration";
     hud1 << "  |  " << moveModeName();
+    if (mShowMode == ShowMode::TempleSchool)
+        hud1 << "  |  " << lightModeName();
     getTextRenderer().render(pRenderContext, asciiForHud(hud1.str()), pTargetFbo, {16, 16});
     if (!mShowControls && !mShowStation)
     {
         getTextRenderer().render(pRenderContext, asciiForHud(st.blurb), pTargetFbo, {16, 40});
         const char* moveHint = (mMoveMode == MoveMode::Orbit)
-                                   ? "Orbit: RMB drag + wheel  |  Tab Fly  |  [ ] look  |  F1 menus  |  F3 show  |  M mute"
-                                   : "Fly: WASD QE + RMB look  |  Tab Orbit  |  [ ] look  |  F1 menus  |  F3 show  |  M mute";
+                                   ? "Orbit: RMB + wheel  |  Tab Fly  |  [ ] look  |  L light  |  F1 menus  |  F3 show  |  M mute"
+                                   : "Fly: WASD QE + RMB  |  Tab Orbit  |  [ ] look  |  L light  |  F1 menus  |  F3 show  |  M mute";
         getTextRenderer().render(pRenderContext, asciiForHud(moveHint), pTargetFbo, {16, 64});
     }
 }
@@ -937,6 +1005,11 @@ bool VernacularViewport::onKeyEvent(const KeyboardEvent& keyEvent)
         {
             mAudioMute = !mAudioMute;
             mStatusMsg = mAudioMute ? "Audio muted" : "Audio unmuted";
+            return true;
+        }
+        if (keyEvent.key == Input::Key::L)
+        {
+            cycleLightMode();
             return true;
         }
         if (keyEvent.key == Input::Key::LeftBracket)

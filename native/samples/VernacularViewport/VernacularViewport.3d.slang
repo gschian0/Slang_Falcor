@@ -1,4 +1,5 @@
 // VERNACULAR — Temple of Secret Knowledge (Iteration 3) + pinned Vibration Modes.
+// Iteration 6: square plane, world-scale UVs, lighting modes, ocean canvas reflections.
 // Analytic raster only (no alphaTest / material-eval).
 // Show mode: gShowMode 0 = TempleSchool, 1 = VibrationModes
 import Scene.Raster;
@@ -28,8 +29,28 @@ cbuffer PerFrameCB
     float gWaterChop;
     float gWaterAbsorb;
     float3 gWaterColor;
-    float gPadW;
+    uint gLightMode;     // 0 unlit, 1 Lambert, 2 Blinn, 3 Physical
+    float3 gPlaneCenter;
+    float gPlaneSize;
+    float3 gSphereCenter;
+    float gSphereRadius;
+    float3 gCubeCenter;
+    float gCubeSize;
+    float3 gCubeRot0;
+    float gPadR0;
+    float3 gCubeRot1;
+    float gPadR1;
+    float3 gCubeRot2;
+    float gPadR2;
 };
+
+// Shared temple sun — sky, ocean specular, canvas lighting (must precede lesson includes).
+float3 getSunDirection()
+{
+    float elev = gSunElev * 1.35f + 0.02f;
+    float az = gSunAzim * 6.2831853f;
+    return normalize(float3(cos(elev) * sin(az), sin(elev), cos(elev) * cos(az)));
+}
 
 float hash11(float n)
 {
@@ -232,14 +253,17 @@ float4 psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET
         return float4(aces_tonemap(hdr * 1.8f), 1.f);
     }
 
-    // Hero canvases — plane / sphere / cube share LessonCanvas look
+    // Hero canvases — plane / sphere / cube share LessonCanvas look.
+    // World-scale UVs: 1 look unit ≈ 1 world meter (no 0–1 stretch on resize).
+    float2 lookUv = worldScaleUv(posW, N);
     float3 albedo = float3(0.72f, 0.55f, 0.48f);
     uint mid = triangleIndex % 3;
     if (mid == 1)
         albedo = float3(0.35f, 0.4f, 0.55f);
     else if (mid == 2)
         albedo = float3(0.55f, 0.45f, 0.75f);
-    float3 look = shadeChapterLook(uv, N, view, posW, albedo);
+    float3 look = shadeChapterLook(lookUv, N, view, posW, albedo);
+    look = applyLightMode(look, N, view);
     // Soft temple rim so canvases float in haze
     float rim = pow(1.f - saturate(abs(dot(N, view))), 2.6f);
     look += float3(0.35f, 0.55f, 0.95f) * rim * 0.35f;

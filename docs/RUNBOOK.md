@@ -3,10 +3,11 @@
 You are not guessing. This is the operating sheet.
 
 **Repo:** `D:\WindowsProgramming\Slang_Falcor`  
-**3D show (primary):** Falcor `VernacularViewport` — **Temple of Secret Knowledge** (Iteration 3)  
+**3D show (primary):** Falcor `VernacularViewport` — **Temple of Secret Knowledge** (Iteration 3, UV/light/water **Iteration 6**)  
 **Pinned show:** **Vibration Modes of Cube** (Iteration 2) — `F3`  
 **Camera:** Orbit / Fly (Iteration 4) — `Tab` or F1 → Movement  
 **Audio:** Spatial bowl + distance / Doppler (Iteration 5) — **M** mute  
+**Lighting:** Unlit / Lambert / Blinn / Physical (**L** or F1) — same sun as sky / ocean  
 **Codebook:** [`codebook/never_ending_slang.md`](codebook/never_ending_slang.md)  
 **Iterations:** [`plans/vernacular-viewport-iterations.md`](plans/vernacular-viewport-iterations.md)  
 **Omniverse:** [`plans/vernacular-omniverse-bridge.md`](plans/vernacular-omniverse-bridge.md) — not Kit today; compose via Slang/USD later
@@ -36,8 +37,9 @@ cd D:\WindowsProgramming\Slang_Falcor\native\external\Falcor\build\windows-vs202
 | **Ocean** | ShaderToy-style raymarched water (sp03 spirit), ethereal retune |
 | **Distant land** | Computer-FBM hills / cliffs |
 | **Sky** | Procedural dome — clouds + sun + haze |
-| **Canvases** | Center plane (double-sided), sphere left, cube right — shared look bank |
+| **Canvases** | Center **square** plane (double-sided), sphere left, cube right — world-scale UVs |
 | **Bank** | UV → … → Physical → paint → school ports (circle / shaping / patterns) |
+| **Water** | Ocean reflects plane / sphere / cube where they sit + soft wet contact |
 | **Audio** | Spatial singing-bowl (plane) + quiet atmosphere; distance + stereo pan + Doppler (**M** mute) |
 | **Pin** | **F3** → Vibration Modes lattices (Iteration 2) |
 
@@ -56,7 +58,8 @@ No Shader Man · no ORCA / PathTracer as primary · no claim of Omniverse Kit ho
 | **0** | Chapter 9 |
 | **-** | Chapter 10 |
 | **=** | Cycle chapters 11–15 |
-| **F1** | Menus (show / **Movement** / env / water / mute / gain / Doppler) |
+| **L** | Cycle lighting (Unlit / Lambert / Blinn / Physical) |
+| **F1** | Menus (show / **Movement** / **Lighting** / env / water / mute / gain / Doppler) |
 | **F2** | Chapter / station tip |
 | **F3** | Temple ↔ Vibration Modes |
 | **M** | Mute audio |
@@ -85,10 +88,11 @@ Sources: `native/samples/VernacularViewport/` · `lessons/temple_env.slang` · `
 
 | Check | Pass |
 |-------|------|
-| Ocean + land + sky read as one place | Orbit out; haze soft |
-| Plane / sphere / cube | Sphere+cube do not cover plane |
-| `[` `]` Ch0 UV | Looks update on all three canvases |
-| F1 env / water | Sun, haze, chop change the world |
+| Ocean + land + sky read as one place | Orbit out; haze soft; sun matches canvas **L** light |
+| Plane / sphere / cube | Square plane (no stretch); sphere+cube do not cover plane |
+| `[` `]` Ch0 UV | Looks update on all three; UV tiles ~1 m (not stretched 0–1) |
+| Water reflections | Shapes appear under their true XZ; wet patches under footprints |
+| F1 env / water / lighting | Sun, haze, chop, **L** change the world together |
 | F3 | Vibration Modes grids restore |
 | M | Spatial bowl mutes; graphics keep running |
 

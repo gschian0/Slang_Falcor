@@ -1,6 +1,6 @@
 // VERNACULAR — Temple of Secret Knowledge (Iteration 3+).
 // Vibration Modes of Cube = Iteration 2, pinned behind ShowMode::VibrationModes.
-// Iteration 4: Orbit/Fly movement — Iteration 5: VernacularSoundscape spatial audio.
+// Iteration 4: Orbit/Fly — Iteration 5: spatial audio — Iteration 6: square plane / UV / light / water.
 #pragma once
 
 #include "Falcor.h"
@@ -42,6 +42,15 @@ public:
         Fly = 1,   // WASD + QE + RMB look
     };
 
+    // Iteration 6 — shades banked look with the same sun as sky / ocean.
+    enum class LightMode : uint32_t
+    {
+        Unlit = 0,
+        Lambert = 1,
+        Blinn = 2,
+        Physical = 3,
+    };
+
     struct ChapterStation
     {
         const char* title;
@@ -62,6 +71,9 @@ private:
     const ChapterStation& activeStation() const;
     const char* chapterName() const;
     const char* moveModeName() const;
+    const char* lightModeName() const;
+    void captureCubeRotation();
+    void cycleLightMode();
     void addCubeInstance(SceneBuilder& builder, MeshID meshID, const float3& pos, float scale, const std::string& name);
     void switchShowMode(ShowMode mode);
     void setMoveMode(MoveMode mode);
@@ -78,6 +90,7 @@ private:
 
     ShowMode mShowMode = ShowMode::TempleSchool;
     MoveMode mMoveMode = MoveMode::Orbit;
+    LightMode mLightMode = LightMode::Unlit;
 
     static constexpr uint32_t kChapterCount = 16;
     uint32_t mChapter = 0;
@@ -124,6 +137,18 @@ private:
     uint32_t mMatOcean = 0xffffffffu;
     uint32_t mMatLand = 0xffffffffu;
     uint32_t mMatCanvas = 0xffffffffu;
+
+    // Iteration 6 — square plane + canvas layout (shared with ocean reflection CB).
+    float mPlaneSize = 3.4f;
+    float3 mPlaneCenter = float3(0.f, 2.05f, 0.f);
+    float3 mSphereCenter = float3(-5.2f, 1.9f, 1.1f);
+    float mSphereRadius = 0.85f;
+    float3 mCubeCenter = float3(5.2f, 1.9f, 1.1f);
+    float mCubeSize = 1.45f;
+    float3 mCubeEulerDeg = float3(8.f, 28.f, -6.f);
+    float3 mCubeRot0 = float3(1.f, 0.f, 0.f);
+    float3 mCubeRot1 = float3(0.f, 1.f, 0.f);
+    float3 mCubeRot2 = float3(0.f, 0.f, 1.f);
 
     // Iteration 5 — spatial engine (camera = listener). Mute with M.
     VernacularSoundscape mSoundscape;

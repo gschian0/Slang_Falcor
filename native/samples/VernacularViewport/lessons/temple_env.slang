@@ -1,6 +1,7 @@
 // VERNACULAR temple environment — ethereal ocean / FBM land / sky.
 // Spirit of labs/slang_playground/shaders/sp03_ocean.slang (afl_ext / ShaderToy MdXyzX)
-// and Iteration 1 VernacularViewport studio. Expects PerFrameCB env/water fields + hash/fbm.
+// Iteration 6: ocean reflects lesson plane / sphere / cube + contact wet.
+// Expects PerFrameCB env/water/canvas fields, hash/fbm, getSunDirection, shading_ladder.
 
 static const float kWaterDepth = 1.0f;
 static const float kDragMult = 0.38f;
@@ -65,13 +66,6 @@ float raymarchwater(float3 camera, float3 start, float3 end, float depth, float 
         pos += dir * (pos.y - height);
     }
     return distance(start, camera);
-}
-
-float3 getSunDirection()
-{
-    float elev = gSunElev * 1.35f + 0.02f;
-    float az = gSunAzim * 6.2831853f;
-    return normalize(float3(cos(elev) * sin(az), sin(elev), cos(elev) * cos(az)));
 }
 
 float3 extra_cheap_atmosphere(float3 raydir, float3 sundir)
@@ -145,6 +139,165 @@ float3 applyFog(float3 color, float3 posW, float3 cam, float3 ray)
     return lerp(color, fogCol, fog);
 }
 
+// Iteration 6 — analytic canvas hits so the ocean reflects shapes where they actually sit.
+bool hitVerticalQuad(float3 ro, float3 rd, float3 center, float size, out float t, out float3 nHit)
+{
+    t = 0.f;
+    nHit = float3(0, 1, 0);
+    if (abs(rd.z) < 1e-5f)
+        return false;
+    t = (center.z - ro.z) / rd.z;
+    if (t < 0.05f)
+        return false;
+    float3 p = ro + rd * t;
+    float h = size * 0.5f;
+    if (abs(p.x - center.x) > h || abs(p.y - center.y) > h)
+        return false;
+    nHit = float3(0.f, 0.f, (ro.z >= center.z) ? 1.f : -1.f);
+    return true;
+}
+
+bool hitSphere(float3 ro, float3 rd, float3 c, float r, out float t, out float3 nHit)
+{
+    t = 0.f;
+    nHit = float3(0, 1, 0);
+    float3 oc = ro - c;
+    float b = dot(oc, rd);
+    float disc = b * b - dot(oc, oc) + r * r;
+    if (disc < 0.f)
+        return false;
+    float s = sqrt(disc);
+    t = -b - s;
+    if (t < 0.05f)
+        t = -b + s;
+    if (t < 0.05f)
+        return false;
+    nHit = normalize(ro + rd * t - c);
+    return true;
+}
+
+bool hitObb(float3 ro, float3 rd, float3 center, float size, float3 r0, float3 r1, float3 r2, out float t, out float3 nHit)
+{
+    t = 0.f;
+    nHit = float3(0, 1, 0);
+    float3 d = ro - center;
+    float3 o = float3(dot(d, r0), dot(d, r1), dot(d, r2));
+    float3 v = float3(dot(rd, r0), dot(rd, r1), dot(rd, r2));
+    float h = size * 0.5f;
+    float tmin = 0.05f;
+    float tmax = 1e5f;
+    float3 nLocal = float3(0, 0, 0);
+
+    [unroll]
+    for (int i = 0; i < 3; i++)
+    {
+        float oi = (i == 0) ? o.x : ((i == 1) ? o.y : o.z);
+        float vi = (i == 0) ? v.x : ((i == 1) ? v.y : v.z);
+        if (abs(vi) < 1e-6f)
+        {
+            if (oi < -h || oi > h)
+                return false;
+            continue;
+        }
+        float inv = 1.f / vi;
+        float t0 = (-h - oi) * inv;
+        float t1 = (h - oi) * inv;
+        float s0 = -1.f;
+        if (t0 > t1)
+        {
+            float tmp = t0;
+            t0 = t1;
+            t1 = tmp;
+            s0 = 1.f;
+        }
+        if (t0 > tmin)
+        {
+            tmin = t0;
+            nLocal = float3(0, 0, 0);
+            if (i == 0)
+                nLocal.x = s0;
+            else if (i == 1)
+                nLocal.y = s0;
+            else
+                nLocal.z = s0;
+        }
+        tmax = min(tmax, t1);
+        if (tmax < tmin)
+            return false;
+    }
+    t = tmin;
+    if (dot(nLocal, nLocal) < 1e-8f)
+        nLocal = float3(0, 1, 0);
+    nHit = normalize(r0 * nLocal.x + r1 * nLocal.y + r2 * nLocal.z);
+    return true;
+}
+
+float3 shadeReflectedCanvas(float3 posW, float3 N, float3 viewDir)
+{
+    if (dot(N, viewDir) < 0.f)
+        N = -N;
+    float2 uv = worldScaleUv(posW, N);
+    float3 albedo = float3(0.72f, 0.55f, 0.48f);
+    float id = hash11(floor(posW.x * 1.7f) + floor(posW.y * 2.3f) * 9.f + floor(posW.z * 1.1f));
+    if (id > 0.66f)
+        albedo = float3(0.35f, 0.4f, 0.55f);
+    else if (id > 0.33f)
+        albedo = float3(0.55f, 0.45f, 0.75f);
+    float3 look = shadeChapterLook(uv, N, viewDir, posW, albedo);
+    look = applyLightMode(look, N, viewDir);
+    float rim = pow(1.f - saturate(abs(dot(N, viewDir))), 2.6f);
+    look += float3(0.35f, 0.55f, 0.95f) * rim * 0.28f;
+    return look * 1.55f;
+}
+
+bool reflectTempleShapes(float3 ro, float3 rd, out float3 color)
+{
+    color = float3(0, 0, 0);
+    float best = 1e8f;
+    float3 bestP = ro;
+    float3 bestN = float3(0, 1, 0);
+    bool hit = false;
+
+    float t;
+    float3 n;
+    if (hitVerticalQuad(ro, rd, gPlaneCenter, gPlaneSize, t, n) && t < best)
+    {
+        best = t;
+        bestN = n;
+        bestP = ro + rd * t;
+        hit = true;
+    }
+    if (hitSphere(ro, rd, gSphereCenter, gSphereRadius, t, n) && t < best)
+    {
+        best = t;
+        bestN = n;
+        bestP = ro + rd * t;
+        hit = true;
+    }
+    if (hitObb(ro, rd, gCubeCenter, gCubeSize, gCubeRot0, gCubeRot1, gCubeRot2, t, n) && t < best)
+    {
+        best = t;
+        bestN = n;
+        bestP = ro + rd * t;
+        hit = true;
+    }
+    if (!hit)
+        return false;
+    color = shadeReflectedCanvas(bestP, bestN, -rd);
+    return true;
+}
+
+float templeContactWet(float2 xz)
+{
+    float2 dp = xz - gPlaneCenter.xz;
+    float half = gPlaneSize * 0.5f;
+    float planeFoot = (1.f - smoothstep(half, half + 0.9f, abs(dp.x))) * (1.f - smoothstep(0.12f, 1.15f, abs(dp.y)));
+    float sph = 1.f - smoothstep(gSphereRadius * 0.55f, gSphereRadius + 1.45f, length(xz - gSphereCenter.xz));
+    float ch = gCubeSize * 0.55f;
+    float cube = 1.f - smoothstep(ch, ch + 1.55f, length(xz - gCubeCenter.xz));
+    return saturate(max(planeFoot, max(sph, cube)));
+}
+
 float3 oceanRaymarchHdr(float3 cam, float3 ray, float time)
 {
     if (ray.y >= 0.02f)
@@ -169,16 +322,30 @@ float3 oceanRaymarchHdr(float3 cam, float3 ray, float time)
 
     float fresnel = 0.04f + 0.96f * pow(1.0f - max(0.0f, dot(-N, ray)), 5.0f);
     float3 R = normalize(reflect(ray, N));
-    R.y = abs(R.y);
 
     float3 sundir = getSunDirection();
-    float3 reflection = extra_cheap_atmosphere(R, sundir) * 0.45f * gSkyIntensity + getSunDisk(R, sundir);
-    reflection += cloudLayer(R, time) * 0.55f;
+    float3 reflection;
+    float3 shapeCol;
+    if (reflectTempleShapes(waterHitPos + N * 0.05f, R, shapeCol))
+    {
+        reflection = shapeCol;
+    }
+    else
+    {
+        float3 Rs = R;
+        Rs.y = abs(Rs.y);
+        reflection = extra_cheap_atmosphere(Rs, sundir) * 0.45f * gSkyIntensity + getSunDisk(Rs, sundir);
+        reflection += cloudLayer(Rs, time) * 0.55f;
+    }
 
     float3 absorb = gWaterColor * (0.08f + 0.12f * gWaterAbsorb);
     float3 scattering = absorb * (0.2f + (waterHitPos.y + depth) / depth);
     // Soft sacred shimmer
     scattering += float3(0.04f, 0.06f, 0.12f) * (0.5f + 0.5f * sin(time * 0.4f + waterHitPos.x * 0.05f));
+
+    float wet = templeContactWet(waterHitPos.xz);
+    scattering = lerp(scattering, scattering * float3(0.22f, 0.32f, 0.38f) + float3(0.03f, 0.06f, 0.08f), wet * 0.78f);
+    reflection = lerp(reflection, reflection * 0.70f, wet * 0.35f);
     return fresnel * reflection + scattering;
 }
 

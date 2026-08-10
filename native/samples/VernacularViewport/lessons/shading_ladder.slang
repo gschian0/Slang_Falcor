@@ -1,16 +1,16 @@
 // VERNACULAR shading ladder — classic properties → physical (Disney-ish analytic).
-// Included by VernacularViewport.3d.slang. Expects hash helpers + PerFrameCB.
+// Included by VernacularViewport.3d.slang. Expects hash helpers + PerFrameCB + getSunDirection().
 
 float3 shadeLambert(float3 N, float3 albedo)
 {
-    float3 L = normalize(float3(0.4f, 1.f, 0.55f));
+    float3 L = getSunDirection();
     float ndotl = saturate(dot(N, L));
     return albedo * ndotl + albedo * 0.08f;
 }
 
 float3 shadeBlinn(float3 N, float3 V, float3 albedo)
 {
-    float3 L = normalize(float3(0.4f, 1.f, 0.55f));
+    float3 L = getSunDirection();
     float3 H = normalize(L + V);
     float ndotl = saturate(dot(N, L));
     float ndoth = saturate(dot(N, H));
@@ -20,7 +20,7 @@ float3 shadeBlinn(float3 N, float3 V, float3 albedo)
 // Full / physical — GGX + Schlick F + Smith G; maps classics into one BRDF.
 float3 shadePhysical(float3 N, float3 V, float3 baseColor, float roughness, float metallic)
 {
-    float3 L = normalize(float3(0.4f, 1.f, 0.55f));
+    float3 L = getSunDirection();
     float3 H = normalize(L + V);
     float NdotL = saturate(dot(N, L));
     float NdotV = max(1e-4f, saturate(dot(N, V)));
@@ -198,4 +198,30 @@ float3 shadeChapterLook(float2 uv, float3 N, float3 V, float3 posW, float3 albed
         float3 ink = lerp(float3(0.2f, 0.55f, 0.9f), float3(0.85f, 0.4f, 0.75f), checker);
         return lerp(float3(0.05f, 0.06f, 0.09f), ink, mask);
     }
+}
+
+// World-scale look UVs — 1 unit ≈ 1 world meter (triplanar by dominant normal).
+float2 worldScaleUv(float3 posW, float3 N)
+{
+    float3 a = abs(N);
+    float2 uv;
+    if (a.y >= a.x && a.y >= a.z)
+        uv = posW.xz;
+    else if (a.x >= a.z)
+        uv = posW.zy;
+    else
+        uv = posW.xy;
+    return frac(uv);
+}
+
+// Iteration 6 lighting modes — Unlit raw look, or shade look-as-albedo with temple sun.
+float3 applyLightMode(float3 look, float3 N, float3 V)
+{
+    if (gLightMode == 0)
+        return look;
+    if (gLightMode == 1)
+        return shadeLambert(N, look);
+    if (gLightMode == 2)
+        return shadeBlinn(N, V, look);
+    return shadePhysical(N, V, look, 0.32f, 0.08f);
 }

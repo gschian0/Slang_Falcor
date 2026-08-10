@@ -1,6 +1,6 @@
 # Never-ending Slang — VERNACULAR codebook (Falcor 3D)
 
-> Living story in Slang. **Default show:** Temple of Secret Knowledge (Iteration 3).  
+> Living story in Slang. **Default show:** Temple of Secret Knowledge (Iteration 3+6).  
 > **Pinned:** Vibration Modes of Cube (Iteration 2) — toggle **F3**.  
 > **How to run:** [`../RUNBOOK.md`](../RUNBOOK.md) · iterations [`../plans/vernacular-viewport-iterations.md`](../plans/vernacular-viewport-iterations.md)
 
@@ -17,7 +17,9 @@
 - Ethereal ocean (raymarched, sp03 / ShaderToy spirit)  
 - Distant computer-FBM land  
 - Procedural sky (clouds + sun) + haze  
-- Hero canvases: **plane** (center, double-sided), **sphere** (left), **cube** (right) — shared chapter look  
+- Hero canvases: **square plane** (center, double-sided), **sphere** (left), **cube** (right) — shared chapter look, **world-scale UVs** (1 tile ≈ 1 m)  
+- Lighting modes (**L** / F1): Unlit · Lambert · Blinn · Physical — same `getSunDirection()` as sky / ocean  
+- Ocean reflects the three canvases at their true placement + contact wet — Iteration 6  
 - Spatial singing-bowl on the lesson plane (distance + pan + Doppler; **M** mute) — Iteration 5
 
 ## Vibration Modes of Cube (pinned)
@@ -46,7 +48,7 @@
 | 5 | Ch4 Physical | GGX analytic |
 | 6–0 / - / = | Ch5–15 | paint, neural, school ports |
 
-Controls: `[` `]` · **Tab** Orbit/Fly · **F3** show · RMB orbit · **F1** menus · **F5** reload — full table in RUNBOOK.
+Controls: `[` `]` · **L** lighting · **Tab** Orbit/Fly · **F3** show · RMB orbit · **F1** menus · **F5** reload — full table in RUNBOOK.
 
 ---
 

@@ -4,7 +4,7 @@
 
 **Date pinned:** 2026-08-04  
 **Round 1:** complete — [`ROUND1.md`](ROUND1.md)  
-**3D show:** Temple of Secret Knowledge (Iteration 3) — Vibration Modes pinned (Iteration 2, `F3`) · Orbit/Fly (Iteration 4) · spatial audio (Iteration 5)
+**3D show:** Temple of Secret Knowledge (Iteration 3) — Vibration Modes pinned (Iteration 2, `F3`) · Orbit/Fly (Iteration 4) · spatial audio (Iteration 5) · square plane / world UV / lighting / water reflections (Iteration 6)
 
 ---
 
@@ -90,7 +90,7 @@ Also: [`roadmap.md`](roadmap.md)
 
 ## NEXT (true priority)
 
-1. **Temple of Secret Knowledge** (primary 3D show) — harden ocean/land/sky + canvas bank:
+1. **Temple of Secret Knowledge** (primary 3D show) — Iteration 6 square plane / world UV / lighting / water reflections landed:
    - Sources: `native/samples/VernacularViewport/`
    - Codebook: [`codebook/never_ending_slang.md`](codebook/never_ending_slang.md)
    - Build: `native/scripts/sync_vernacular_viewport.ps1 -Build` (see [`RUNBOOK.md`](RUNBOOK.md))

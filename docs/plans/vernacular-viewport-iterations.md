@@ -289,3 +289,70 @@ cd D:\WindowsProgramming\Slang_Falcor\native\external\Falcor\build\windows-vs202
 ### Stubs / later
 
 Bird chirps · HRTF · moving emitters · Kit/Omniverse audio · Slang PCM.
+
+---
+
+## Iteration 6 — 2026-08-09
+
+### Intent / what user asked
+
+1. **Plane must be square** — look/texture must not stretch.  
+2. **UV mapping scales with size** — texel / look frequency stays consistent when the plane (or canvases) change size (world-scale UVs, not 0–1 stretched across a resized quad).  
+3. **Looks can have lighting modes** — Unlit vs Lambert / Blinn / Physical on the same banked look, using the temple sun.  
+4. **Shapes reflect on the water where they actually are** — plane, sphere, cube visible in the ocean shader; simple contact / wet read; env + canvases share sun / haze.
+
+Keep F3 Vibration pin, Orbit/Fly, Iteration 5 spatial audio. No Omniverse / ORCA / PathTracer. No commit.
+
+### Root cause (plane stretch)
+
+Falcor `createQuad` is an **XZ** unit square. Scale was `(3.4, 3.4, 1)` then `-90°` X — mesh **Z** becomes height and stayed `1`, so the hero was a **3.4 × 1** rectangle. UV 0–1 then stretched the look.
+
+### What changed
+
+| Area | Behavior |
+|------|----------|
+| Plane | Uniform scale `3.4` → vertical **square** after `-90°` X |
+| UV | `worldScaleUv` — triplanar world meters, `frac` so 1 look tile ≈ 1 m on plane / sphere / cube |
+| Lighting | **L** or F1 **Lighting mode**: Unlit / Lambert / Blinn / Physical; ladder + mode use `getSunDirection()` (same as sky / ocean) |
+| Ocean | Analytic hit vs vertical quad + sphere + OBB cube along the reflection ray; cheap chapter look + light mode; contact wet under each footprint |
+| CB | `gLightMode`, canvas centers / sizes, cube rotation axes — must match `.3d.slang` |
+
+**Preserved:** Temple default, F3 Vibration, Orbit/Fly, spatial bowl (**M** mute), analytic raster.
+
+### Files
+
+| Path | Role |
+|------|------|
+| `native/samples/VernacularViewport/VernacularViewport.{h,cpp}` | Uniform plane, LightMode, CB, F1 / **L** |
+| `native/samples/VernacularViewport/VernacularViewport.3d.slang` | Shared sun + canvas UV / light wrap |
+| `lessons/shading_ladder.slang` | Temple-sun Lambert/Blinn/Physical + `applyLightMode` / `worldScaleUv` |
+| `lessons/temple_env.slang` | Shape reflections + wet contact |
+
+### Rebuild / run
+
+```powershell
+cd D:\WindowsProgramming\Slang_Falcor\native
+powershell -ExecutionPolicy Bypass -File .\scripts\sync_vernacular_viewport.ps1 -Build
+
+cd D:\WindowsProgramming\Slang_Falcor\native\external\Falcor\build\windows-vs2022\bin\Release
+.\VernacularViewport.exe
+```
+
+Kill `VernacularViewport.exe` first if the linker reports a locked file.
+
+### Controls (new)
+
+| Input | Action |
+|-------|--------|
+| **L** | Cycle Unlit → Lambert → Blinn → Physical |
+| **F1 → Lighting mode** | Same modes via dropdown |
+
+Orbit out over the water: plane / sphere / cube should appear in reflections under their true placement; dark wet patches under footprints. `[` `]` Ch0 UV on the square plane should not look stretched; **L** Lambert should share sun direction with the sky disk.
+
+### Keep vs revert
+
+| Keep | Revert if |
+|------|-----------|
+| Uniform plane scale | User wants a wide banner canvas — then non-uniform scale + world UVs (UVs still won’t stretch) |
+| World-scale `frac` UV | Lesson wants a single 0–1 look across the whole plane — drop `frac`, keep `uv * size` or mesh UV |
+| Water analytic reflections | Perf too heavy — skip chapter look, use flat albedo tint only |
