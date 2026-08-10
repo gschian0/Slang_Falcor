@@ -1,13 +1,17 @@
 // VERNACULAR — Temple of Secret Knowledge (Iteration 3+).
 // Vibration Modes of Cube = Iteration 2, pinned behind ShowMode::VibrationModes.
 // Iteration 4: Orbit/Fly — Iteration 5: spatial audio — Iteration 6: square plane / UV / light / water.
+// Iteration 7: cheap upscale ladder + shader school window + compute boids.
 #pragma once
 
 #include "Falcor.h"
 #include "Core/SampleApp.h"
 #include "Core/Pass/RasterPass.h"
+#include "Core/Pass/ComputePass.h"
+#include "Core/Pass/FullScreenPass.h"
 #include "VernacularSoundscape.h"
 
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
@@ -51,6 +55,15 @@ public:
         Physical = 3,
     };
 
+    // Iteration 7 — render low, reconstruct high. DLSS is NGX (greyed in SampleApp).
+    enum class UpscaleMode : uint32_t
+    {
+        Off = 0,
+        InternalScale = 1,
+        TAA = 2,
+        DLSS = 3, // unavailable — see mDlssWhy
+    };
+
     struct ChapterStation
     {
         const char* title;
@@ -72,8 +85,10 @@ private:
     const char* chapterName() const;
     const char* moveModeName() const;
     const char* lightModeName() const;
+    const char* upscaleModeName() const;
     void captureCubeRotation();
     void cycleLightMode();
+    void cycleUpscaleMode();
     void addCubeInstance(SceneBuilder& builder, MeshID meshID, const float3& pos, float scale, const std::string& name);
     void switchShowMode(ShowMode mode);
     void setMoveMode(MoveMode mode);
@@ -84,6 +99,20 @@ private:
     void shutdownAudio();
     void updateSoundscape(float dt);
 
+    // Iteration 7
+    void loadSchoolPaths();
+    void syncLessonSourcesIfNeeded(bool force);
+    void openSchoolEditor();
+    void ensureUpscaleTargets(uint32_t displayW, uint32_t displayH);
+    void createSchoolPasses();
+    void initBoids();
+    void dispatchBoids(RenderContext* pRenderContext, float dt);
+    void drawBoids(RenderContext* pRenderContext, const ref<Fbo>& pFbo);
+    void applyUpscale(RenderContext* pRenderContext, const ref<Fbo>& pSceneFbo, const ref<Fbo>& pTargetFbo);
+    bool usesInternalTarget() const;
+    float internalScale() const;
+    const char* dlssWhy() const;
+
     ref<Scene> mpScene;
     ref<Camera> mpCamera;
     ref<RasterPass> mpRasterPass;
@@ -91,6 +120,7 @@ private:
     ShowMode mShowMode = ShowMode::TempleSchool;
     MoveMode mMoveMode = MoveMode::Orbit;
     LightMode mLightMode = LightMode::Unlit;
+    UpscaleMode mUpscaleMode = UpscaleMode::Off;
 
     static constexpr uint32_t kChapterCount = 16;
     uint32_t mChapter = 0;
@@ -157,6 +187,44 @@ private:
     float mAudioMasterGain = 1.f;
     float3 mAudioLastEye = float3(0.f);
     bool mAudioHaveLastEye = false;
+
+    // Iteration 7 — internal scale / TAA / blit
+    uint32_t mScaleIndex = 1; // 0=0.50 1=0.67 2=1.0 (used when not Off)
+    bool mBicubicBlit = true;
+    ref<Fbo> mpSceneFbo;
+    ref<Fbo> mpMvecFbo;
+    ref<Fbo> mpTaaFbo;
+    ref<Texture> mpPrevColor;
+    ref<FullScreenPass> mpMvecPass;
+    ref<FullScreenPass> mpTaaPass;
+    ref<FullScreenPass> mpBlitPass;
+    ref<Sampler> mpLinearSampler;
+    float4x4 mPrevViewProj = float4x4::identity();
+    bool mHavePrevViewProj = false;
+    bool mResetTaa = true;
+    uint32_t mInternalW = 0;
+    uint32_t mInternalH = 0;
+    uint32_t mDisplayW = 0;
+    uint32_t mDisplayH = 0;
+
+    // Iteration 7 — compute boids
+    static constexpr uint32_t kBoidCount = 128;
+    bool mBoidsEnabled = false;
+    ref<ComputePass> mpBoidsCs;
+    ref<RasterPass> mpBoidPass;
+    ref<Buffer> mpBoids[2];
+    uint32_t mBoidSrc = 0;
+    float3 mBoidOrigin = float3(0.f, 7.5f, -14.f);
+    float mBoidRadius = 16.f;
+
+    // School editor + lesson sync
+    std::filesystem::path mRepoLessons;
+    std::filesystem::path mShaderLessons;
+    std::filesystem::path mRepoRoot;
+    std::filesystem::path mPythonExe;
+    std::filesystem::path mEditorCmd;
+    std::string mDlssWhy;
+    double mLastLessonPoll = 0.0;
 
     std::string mStatusMsg;
 };

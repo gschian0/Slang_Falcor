@@ -356,3 +356,74 @@ Orbit out over the water: plane / sphere / cube should appear in reflections und
 | Uniform plane scale | User wants a wide banner canvas — then non-uniform scale + world UVs (UVs still won’t stretch) |
 | World-scale `frac` UV | Lesson wants a single 0–1 look across the whole plane — drop `frac`, keep `uv * size` or mesh UV |
 | Water analytic reflections | Perf too heavy — skip chapter look, use flat albedo tint only |
+
+---
+
+## Iteration 7 — 2026-08-10
+
+### Intent / what user asked
+
+Cheap upscalers (DLSS + whatever Falcor already has) + a **second OS window** to edit VS / PS / autodiff Slang + a **compute boids** flock. School must *walk through* how those passes are done. Keep Temple default, F3 Vibration, Orbit/Fly, spatial audio, Iteration 6 plane / lighting / water. No commit. No F10 chrome.
+
+### What Falcor actually has
+
+| Tech | In this tree | Wired in SampleApp? |
+|------|----------------|---------------------|
+| Internal scale + blit | Always | **Yes** — 0.50 / 0.67 / 1.0, bilinear or bicubic (`lessons/upscale_blit.ps.slang`) |
+| TAA | `Source/RenderPasses/TAA/` plugin | **Yes** — school-owned port + depth-reconstructed mvec (not Mogwai `RenderData`) |
+| DLSS / NGX | `Source/RenderPasses/DLSSPass/` + `bin/Release/DLSSPass.dll` + `nvngx_dlss.dll` | **No in SampleApp** — plugin+SDK ship; needs Mogwai `RenderData` (color+depth+mvec+jitter). `NGXWrapper` is plugin-private. Menu greys it with that one-liner. |
+| NIS / FSR | Not present as Falcor passes | No |
+| NRD | Path-tracer denoiser plugin | Not an upscaler — skipped |
+
+**DLSS blocker (exact):** SampleApp is not a render graph. Instantiating `DLSSPass` requires `RenderData` bindings (`color` / `depth` / `mvec` / `output`). `NGXWrapper` lives in the plugin DLL, not Falcor core / this sample. Runtime DLLs are present (`DLSSPass.dll`, `nvngx_dlss.dll`). Honest path: Mogwai + `DLSSPass` later; ship internal scale + TAA now.
+
+### What changed
+
+| Area | Behavior |
+|------|----------|
+| Upscale | F1 **Upscale** Off / Internal / TAA / DLSS(n/a); **U** cycles working rungs; scale 0.50/0.67/1.0; bicubic blit |
+| Editor | **F8** / F1+F2 button spawns/focuses `python -m slang_falcon.live --school-3d` with VS / PS / Diff tabs. **E** remains Fly-up. |
+| Shaders | Split `lessons/temple_vs.slang` + `temple_ps.slang`; host `#include`s them. `temple_diff.slang` is 2D DiffSlang-style (`[Differentiable]`). File-watch copies repo lessons → shader cache. |
+| Boids | **B** / F1 checkbox — compute Reynolds flock + impostor quads over ocean/sky (no Scene.Raster). |
+| Docs | [`../codebook/gpu_school_passes.md`](../codebook/gpu_school_passes.md) walkthrough |
+
+**Preserved:** Temple default, F3 Vibration, Orbit/Fly, **M** mute, Iteration 6 square plane / L lighting / water reflections, analytic raster.
+
+### Files
+
+| Path | Role |
+|------|------|
+| `VernacularViewport.{h,cpp,3d.slang}` | Upscale FBO, TAA/mvec/blit, boids, F8 spawn |
+| `lessons/temple_vs.slang` / `temple_ps.slang` | School-editable VS / PS |
+| `lessons/temple_diff.slang` | Autodiff 2D live module |
+| `lessons/boids.{cs,3d}.slang` | Compute + impostors |
+| `lessons/{mvec,taa,upscale_blit}.ps.slang` | Cheap ladder |
+| `python/slang_falcon/live.py` | `--files` / `--school-3d` tabs |
+| `native/scripts/sync_vernacular_viewport.ps1` | Writes `vernacular_school_editor.cmd` + paths |
+
+### Rebuild / run
+
+```powershell
+# Kill VernacularViewport.exe if locked, then:
+cd D:\WindowsProgramming\Slang_Falcor\native
+powershell -ExecutionPolicy Bypass -File .\scripts\sync_vernacular_viewport.ps1 -Build
+
+cd D:\WindowsProgramming\Slang_Falcor\native\external\Falcor\build\windows-vs2022\bin\Release
+.\VernacularViewport.exe
+```
+
+### Controls (new)
+
+| Input | Action |
+|-------|--------|
+| **U** / F1 Upscale | Off → Internal → TAA (DLSS skipped / greyed) |
+| **B** | Toggle compute boids (Temple) |
+| **F8** | Spawn / focus shader school window (VS / PS / Diff) |
+
+### Keep vs revert
+
+| Keep | Revert if |
+|------|-----------|
+| Internal scale + TAA ladder | Artists want native-only — leave Upscale Off |
+| F8 live school window | Prefer in-process ImGui editor later |
+| Boids as overlay toggle | Want a bank chapter instead — don't steal `[` `]` looks |

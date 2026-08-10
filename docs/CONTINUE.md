@@ -4,7 +4,7 @@
 
 **Date pinned:** 2026-08-04  
 **Round 1:** complete — [`ROUND1.md`](ROUND1.md)  
-**3D show:** Temple of Secret Knowledge (Iteration 3) — Vibration Modes pinned (Iteration 2, `F3`) · Orbit/Fly (Iteration 4) · spatial audio (Iteration 5) · square plane / world UV / lighting / water reflections (Iteration 6)
+**3D show:** Temple of Secret Knowledge (Iteration 3) — Vibration Modes pinned (Iteration 2, `F3`) · Orbit/Fly (Iteration 4) · spatial audio (Iteration 5) · square plane / world UV / lighting / water reflections (Iteration 6) · upscale / F8 school editor / compute boids (Iteration 7)
 
 ---
 
@@ -90,11 +90,13 @@ Also: [`roadmap.md`](roadmap.md)
 
 ## NEXT (true priority)
 
-1. **Temple of Secret Knowledge** (primary 3D show) — Iteration 6 square plane / world UV / lighting / water reflections landed:
+1. **Temple of Secret Knowledge** (primary 3D show) — Iteration 7 cheap upscale + F8 VS/PS/Diff editor + compute boids landed (Iteration 6 plane/UV/light/water kept):
    - Sources: `native/samples/VernacularViewport/`
+   - Pass school: [`codebook/gpu_school_passes.md`](codebook/gpu_school_passes.md)
    - Codebook: [`codebook/never_ending_slang.md`](codebook/never_ending_slang.md)
    - Build: `native/scripts/sync_vernacular_viewport.ps1 -Build` (see [`RUNBOOK.md`](RUNBOOK.md))
    - Audio: Iteration 5 `VernacularSoundscape` (spatial bowl / distance / Doppler) — [`plans/vernacular-viewport-spatial-audio.md`](plans/vernacular-viewport-spatial-audio.md)
+   - DLSS: plugin+`nvngx_dlss.dll` present — not wired in SampleApp (no render-graph); Internal + TAA run now
    - Optional: richer school ports, USD export sketch, chirp sources / HRTF
 2. Vibration Modes remain one `F3` away — extend only if asked
 3. Later: SAM · inline AI image/post · Omniverse USD path

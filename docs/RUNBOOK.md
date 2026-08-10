@@ -3,12 +3,15 @@
 You are not guessing. This is the operating sheet.
 
 **Repo:** `D:\WindowsProgramming\Slang_Falcor`  
-**3D show (primary):** Falcor `VernacularViewport` — **Temple of Secret Knowledge** (Iteration 3, UV/light/water **Iteration 6**)  
+**3D show (primary):** Falcor `VernacularViewport` — **Temple of Secret Knowledge** (Iteration 3, UV/light/water **Iteration 6**, upscale/editor/boids **Iteration 7**)  
 **Pinned show:** **Vibration Modes of Cube** (Iteration 2) — `F3`  
 **Camera:** Orbit / Fly (Iteration 4) — `Tab` or F1 → Movement  
 **Audio:** Spatial bowl + distance / Doppler (Iteration 5) — **M** mute  
 **Lighting:** Unlit / Lambert / Blinn / Physical (**L** or F1) — same sun as sky / ocean  
-**Codebook:** [`codebook/never_ending_slang.md`](codebook/never_ending_slang.md)  
+**Upscale:** Off / Internal scale / TAA (**U** or F1) — DLSS greyed (NGX / Mogwai)  
+**School editor:** **F8** — second window VS / PS / Diff  
+**Boids:** **B** — compute flock  
+**Codebook:** [`codebook/never_ending_slang.md`](codebook/never_ending_slang.md) · [`codebook/gpu_school_passes.md`](codebook/gpu_school_passes.md)  
 **Iterations:** [`plans/vernacular-viewport-iterations.md`](plans/vernacular-viewport-iterations.md)  
 **Omniverse:** [`plans/vernacular-omniverse-bridge.md`](plans/vernacular-omniverse-bridge.md) — not Kit today; compose via Slang/USD later
 
@@ -59,11 +62,14 @@ No Shader Man · no ORCA / PathTracer as primary · no claim of Omniverse Kit ho
 | **-** | Chapter 10 |
 | **=** | Cycle chapters 11–15 |
 | **L** | Cycle lighting (Unlit / Lambert / Blinn / Physical) |
-| **F1** | Menus (show / **Movement** / **Lighting** / env / water / mute / gain / Doppler) |
-| **F2** | Chapter / station tip |
+| **U** | Cycle upscale (Off / Internal / TAA) — DLSS unavailable |
+| **B** | Toggle compute boids (Temple) |
+| **F1** | Menus (show / Movement / Lighting / **Upscale** / boids / editor / env / water / mute) |
+| **F2** | Chapter / station tip + school pass walkthrough |
 | **F3** | Temple ↔ Vibration Modes |
+| **F8** | Open / focus shader school window (VS / PS / Diff) — **E** is Fly-up |
 | **M** | Mute audio |
-| **F5** | Hot-reload shaders |
+| **F5** | Hot-reload shaders (also copies repo `lessons/` → shader cache) |
 | **V** / **,** **.** | Waves / amp — Vibration mode only |
 
 **Movement modes** (Iteration 4): **Orbit** (default) · **Fly**. Switch with **Tab** or F1 → Movement.
@@ -82,7 +88,19 @@ No Shader Man · no ORCA / PathTracer as primary · no claim of Omniverse Kit ho
 | 14 | Shaping (BoS) | school |
 | 15 | Patterns (BoS) | school |
 
-Sources: `native/samples/VernacularViewport/` · `lessons/temple_env.slang` · `lessons/shading_ladder.slang`
+Sources: `native/samples/VernacularViewport/` · `lessons/temple_vs.slang` · `lessons/temple_ps.slang` · `lessons/temple_diff.slang` · `lessons/temple_env.slang` · `lessons/shading_ladder.slang` · [`codebook/gpu_school_passes.md`](codebook/gpu_school_passes.md)
+
+### School walkthrough (Iteration 7)
+
+How research apps do this — not a checkbox:
+
+1. **Vertex** (`temple_vs.slang`) — vibration + ocean deck placement.  
+2. **Pixel** (`temple_ps.slang`) — looks + **L** lighting + env.  
+3. **Compute** (**B** boids) — agents/fields on CS; impostors rasterized after.  
+4. **Differential** (`temple_diff.slang` in F8 Diff tab) — `[Differentiable]` / labs DiffSlang; 3D does not run `bwd_diff` this pass.  
+5. **Upscale** — render low, reconstruct high. Internal blit always; TAA from depth mvec; **DLSS is NGX** (`DLSSPass.dll` + `nvngx_dlss.dll` already in bin). Greyed here: SampleApp has no Mogwai `RenderData`. Use the research SDK — don't rewrite UNIX.
+
+**F8** opens `python -m slang_falcon.live --school-3d` on those three files. Save → 3D file-watch / F5.
 
 ### Exit checks
 
@@ -93,6 +111,9 @@ Sources: `native/samples/VernacularViewport/` · `lessons/temple_env.slang` · `
 | `[` `]` Ch0 UV | Looks update on all three; UV tiles ~1 m (not stretched 0–1) |
 | Water reflections | Shapes appear under their true XZ; wet patches under footprints |
 | F1 env / water / lighting | Sun, haze, chop, **L** change the world together |
+| F1 Upscale Internal 0.67 | Softer / cheaper; TAA steadies shimmer when orbiting |
+| F8 | Second OS window with VS / PS / Diff tabs |
+| B | Flock over ocean/sky; canvases still read |
 | F3 | Vibration Modes grids restore |
 | M | Spatial bowl mutes; graphics keep running |
 

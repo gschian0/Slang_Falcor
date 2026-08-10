@@ -9,15 +9,25 @@
 #include "Scene/Transform.h"
 #include "Utils/UI/TextRenderer.h"
 #include "Core/API/RasterizerState.h"
+#include "Core/Platform/OS.h"
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
+#include <random>
 #include <sstream>
 #include <string>
 #include <vector>
+
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 
 FALCOR_EXPORT_D3D12_AGILITY_SDK
 
@@ -201,10 +211,58 @@ const char* VernacularViewport::lightModeName() const
     }
 }
 
+const char* VernacularViewport::upscaleModeName() const
+{
+    switch (mUpscaleMode)
+    {
+    case UpscaleMode::InternalScale:
+        return "Internal scale";
+    case UpscaleMode::TAA:
+        return "TAA";
+    case UpscaleMode::DLSS:
+        return "DLSS (n/a)";
+    default:
+        return "Off";
+    }
+}
+
+const char* VernacularViewport::dlssWhy() const
+{
+    return mDlssWhy.c_str();
+}
+
+bool VernacularViewport::usesInternalTarget() const
+{
+    if (mUpscaleMode == UpscaleMode::Off)
+        return false;
+    return true;
+}
+
+float VernacularViewport::internalScale() const
+{
+    if (mUpscaleMode == UpscaleMode::Off)
+        return 1.f;
+    if (mScaleIndex == 0)
+        return 0.50f;
+    if (mScaleIndex == 1)
+        return 0.67f;
+    return 1.f;
+}
+
 void VernacularViewport::cycleLightMode()
 {
     mLightMode = LightMode((uint32_t(mLightMode) + 1u) % 4u);
     mStatusMsg = std::string("Lighting: ") + lightModeName();
+}
+
+void VernacularViewport::cycleUpscaleMode()
+{
+    uint32_t next = (uint32_t(mUpscaleMode) + 1u) % 4u;
+    if (next == uint32_t(UpscaleMode::DLSS))
+        next = uint32_t(UpscaleMode::Off); // skip unavailable
+    mUpscaleMode = UpscaleMode(next);
+    mResetTaa = true;
+    mStatusMsg = std::string("Upscale: ") + upscaleModeName();
 }
 
 void VernacularViewport::captureCubeRotation()
@@ -364,12 +422,400 @@ void VernacularViewport::updateSoundscape(float dt)
     }
 }
 
+void VernacularViewport::loadSchoolPaths()
+{
+    mDlssWhy =
+        "DLSS: DLSSPass.dll + nvngx_dlss.dll ship next to this exe, but SampleApp has no Mogwai "
+        "RenderData (color+depth+mvec+jitter). NGXWrapper is plugin-private. Use Mogwai PathTracer+DLSSPass "
+        "-- NGX is the research SDK, not a hamster-wheel rewrite.";
+
+    const auto runtime = getRuntimeDirectory();
+    mEditorCmd = runtime / "vernacular_school_editor.cmd";
+    mShaderLessons = runtime / "shaders" / "Samples" / "VernacularViewport" / "lessons";
+
+    const auto pathsFile = runtime / "vernacular_school_paths.txt";
+    if (std::filesystem::exists(pathsFile))
+    {
+        std::ifstream in(pathsFile);
+        std::string line;
+        while (std::getline(in, line))
+        {
+            if (line.empty() || line[0] == '#')
+                continue;
+            auto eq = line.find('=');
+            if (eq == std::string::npos)
+                continue;
+            std::string key = line.substr(0, eq);
+            std::string val = line.substr(eq + 1);
+            while (!val.empty() && (val.back() == '\r' || val.back() == ' '))
+                val.pop_back();
+            if (key == "REPO_LESSONS")
+                mRepoLessons = val;
+            else if (key == "PYTHON")
+                mPythonExe = val;
+            else if (key == "REPO_ROOT")
+                mRepoRoot = val;
+        }
+    }
+
+    if (mRepoLessons.empty())
+    {
+        // Dev fallback: walk up from runtime toward native/samples/VernacularViewport/lessons
+        auto p = runtime;
+        for (int i = 0; i < 10 && p.has_parent_path(); ++i)
+        {
+            auto cand = p / "native" / "samples" / "VernacularViewport" / "lessons";
+            if (std::filesystem::exists(cand / "temple_vs.slang"))
+            {
+                mRepoLessons = cand;
+                mRepoRoot = p;
+                break;
+            }
+            p = p.parent_path();
+        }
+    }
+}
+
+void VernacularViewport::syncLessonSourcesIfNeeded(bool force)
+{
+    if (mRepoLessons.empty() || mShaderLessons.empty())
+        return;
+    if (!std::filesystem::exists(mRepoLessons))
+        return;
+    std::filesystem::create_directories(mShaderLessons);
+
+    bool copied = false;
+    std::error_code ec;
+    for (const auto& ent : std::filesystem::directory_iterator(mRepoLessons, ec))
+    {
+        if (!ent.is_regular_file())
+            continue;
+        auto dst = mShaderLessons / ent.path().filename();
+        bool need = force || !std::filesystem::exists(dst);
+        if (!need)
+        {
+            auto srcT = std::filesystem::last_write_time(ent.path(), ec);
+            auto dstT = std::filesystem::last_write_time(dst, ec);
+            need = srcT > dstT;
+        }
+        if (need)
+        {
+            std::filesystem::copy_file(ent.path(), dst, std::filesystem::copy_options::overwrite_existing, ec);
+            copied = true;
+        }
+    }
+
+    auto hostSrc = mRepoLessons.parent_path() / "VernacularViewport.3d.slang";
+    auto hostDst = mShaderLessons.parent_path() / "VernacularViewport.3d.slang";
+    if (std::filesystem::exists(hostSrc))
+    {
+        bool need = force || !std::filesystem::exists(hostDst);
+        if (!need)
+        {
+            auto srcT = std::filesystem::last_write_time(hostSrc, ec);
+            auto dstT = std::filesystem::last_write_time(hostDst, ec);
+            need = srcT > dstT;
+        }
+        if (need)
+        {
+            std::filesystem::copy_file(hostSrc, hostDst, std::filesystem::copy_options::overwrite_existing, ec);
+            copied = true;
+        }
+    }
+
+    if (copied && mpScene)
+    {
+        createRasterPass();
+        createSchoolPasses();
+        mStatusMsg = "Synced school shaders (F5)";
+    }
+}
+
+#ifdef _WIN32
+static HWND gSchoolHwnd = nullptr;
+static BOOL CALLBACK focusVernacularSchoolWnd(HWND hwnd, LPARAM)
+{
+    wchar_t title[320];
+    if (GetWindowTextW(hwnd, title, 320) <= 0)
+        return TRUE;
+    if (wcsstr(title, L"VERNACULAR") && wcsstr(title, L"3D school"))
+    {
+        gSchoolHwnd = hwnd;
+        return FALSE;
+    }
+    return TRUE;
+}
+#endif
+
+void VernacularViewport::openSchoolEditor()
+{
+#ifdef _WIN32
+    gSchoolHwnd = nullptr;
+    EnumWindows(focusVernacularSchoolWnd, 0);
+    if (gSchoolHwnd)
+    {
+        ShowWindow(gSchoolHwnd, SW_RESTORE);
+        SetForegroundWindow(gSchoolHwnd);
+        mStatusMsg = "Focused shader school window";
+        return;
+    }
+#endif
+
+    if (!mEditorCmd.empty() && std::filesystem::exists(mEditorCmd))
+    {
+#ifdef _WIN32
+        ShellExecuteW(nullptr, L"open", mEditorCmd.wstring().c_str(), nullptr,
+                      mRepoRoot.empty() ? nullptr : mRepoRoot.wstring().c_str(), SW_SHOWNORMAL);
+#else
+        executeProcess("cmd", std::string("/c \"") + mEditorCmd.string() + "\"");
+#endif
+        mStatusMsg = "Opened shader school (VS / PS / Diff)";
+        return;
+    }
+
+    if (!mPythonExe.empty() && !mRepoLessons.empty())
+    {
+        std::ostringstream args;
+        args << "-m slang_falcon.live --no-curriculum --school-3d --entry hello_pixel --size 512"
+             << " --files \"" << (mRepoLessons / "temple_vs.slang").string() << "\""
+             << " \"" << (mRepoLessons / "temple_ps.slang").string() << "\""
+             << " \"" << (mRepoLessons / "temple_diff.slang").string() << "\""
+             << " --labels VS,PS,Diff";
+        std::string py = mPythonExe.string();
+        if (py.size() > 4 && py.substr(py.size() - 4) == ".exe")
+            py = py.substr(0, py.size() - 4);
+        try
+        {
+            executeProcess(py, args.str());
+            mStatusMsg = "Opened shader school (VS / PS / Diff)";
+        }
+        catch (...)
+        {
+            mStatusMsg = "School editor failed — check vernacular_school_paths.txt";
+        }
+        return;
+    }
+
+    mStatusMsg = "School editor missing — rebuild with sync_vernacular_viewport.ps1 -Build";
+}
+
+void VernacularViewport::createSchoolPasses()
+{
+    auto pDev = getDevice();
+    if (!mpLinearSampler)
+    {
+        Sampler::Desc sd;
+        sd.setFilterMode(TextureFilteringMode::Linear, TextureFilteringMode::Linear, TextureFilteringMode::Linear);
+        mpLinearSampler = pDev->createSampler(sd);
+    }
+    try
+    {
+        mpMvecPass = FullScreenPass::create(pDev, "Samples/VernacularViewport/lessons/mvec.ps.slang");
+        mpTaaPass = FullScreenPass::create(pDev, "Samples/VernacularViewport/lessons/taa.ps.slang");
+        mpBlitPass = FullScreenPass::create(pDev, "Samples/VernacularViewport/lessons/upscale_blit.ps.slang");
+        mpBoidsCs = ComputePass::create(pDev, "Samples/VernacularViewport/lessons/boids.cs.slang", "main");
+        ProgramDesc boidDesc;
+        boidDesc.addShaderLibrary("Samples/VernacularViewport/lessons/boids.3d.slang").vsEntry("vsMain").psEntry("psMain");
+        mpBoidPass = RasterPass::create(pDev, boidDesc);
+        mpBoidPass->getState()->setVao(Vao::create(Vao::Topology::TriangleList));
+        DepthStencilState::Desc ds;
+        ds.setDepthEnabled(true).setDepthWriteMask(true).setDepthFunc(ComparisonFunc::Less);
+        mpBoidPass->getState()->setDepthStencilState(DepthStencilState::create(ds));
+        RasterizerState::Desc rs;
+        rs.setCullMode(RasterizerState::CullMode::None);
+        mpBoidPass->getState()->setRasterizerState(RasterizerState::create(rs));
+    }
+    catch (const std::exception& e)
+    {
+        logWarning("VernacularViewport school passes: {}", e.what());
+        mStatusMsg = std::string("School pass compile: ") + e.what();
+    }
+}
+
+void VernacularViewport::initBoids()
+{
+    struct BoidCPU
+    {
+        float pos[3];
+        float pad0;
+        float vel[3];
+        float pad1;
+    };
+    std::vector<BoidCPU> init(kBoidCount);
+    std::mt19937 rng(7);
+    std::uniform_real_distribution<float> dx(-12.f, 12.f);
+    std::uniform_real_distribution<float> dy(-2.5f, 4.5f);
+    std::uniform_real_distribution<float> dz(-10.f, 8.f);
+    std::uniform_real_distribution<float> dv(-1.2f, 1.2f);
+    for (uint32_t i = 0; i < kBoidCount; ++i)
+    {
+        init[i].pos[0] = mBoidOrigin.x + dx(rng);
+        init[i].pos[1] = mBoidOrigin.y + dy(rng);
+        init[i].pos[2] = mBoidOrigin.z + dz(rng);
+        init[i].vel[0] = dv(rng);
+        init[i].vel[1] = dv(rng) * 0.35f;
+        init[i].vel[2] = dv(rng);
+        init[i].pad0 = init[i].pad1 = 0.f;
+    }
+    auto flags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess;
+    mpBoids[0] = getDevice()->createStructuredBuffer(
+        uint32_t(sizeof(BoidCPU)), kBoidCount, flags, MemoryType::DeviceLocal, init.data(), false
+    );
+    mpBoids[1] = getDevice()->createStructuredBuffer(
+        uint32_t(sizeof(BoidCPU)), kBoidCount, flags, MemoryType::DeviceLocal, init.data(), false
+    );
+    mBoidSrc = 0;
+}
+
+void VernacularViewport::ensureUpscaleTargets(uint32_t displayW, uint32_t displayH)
+{
+    if (displayW == 0 || displayH == 0)
+        return;
+    mDisplayW = displayW;
+    mDisplayH = displayH;
+    const float s = internalScale();
+    uint32_t iw = std::max(16u, uint32_t(std::lround(float(displayW) * s)));
+    uint32_t ih = std::max(16u, uint32_t(std::lround(float(displayH) * s)));
+    if (mpSceneFbo && iw == mInternalW && ih == mInternalH)
+        return;
+
+    mInternalW = iw;
+    mInternalH = ih;
+    Fbo::Desc desc;
+    desc.setColorTarget(0, ResourceFormat::RGBA16Float);
+    desc.setDepthStencilTarget(ResourceFormat::D32Float);
+    mpSceneFbo = Fbo::create2D(getDevice(), iw, ih, desc);
+
+    Fbo::Desc mvecDesc;
+    mvecDesc.setColorTarget(0, ResourceFormat::RG16Float);
+    mpMvecFbo = Fbo::create2D(getDevice(), iw, ih, mvecDesc);
+
+    Fbo::Desc taaDesc;
+    taaDesc.setColorTarget(0, ResourceFormat::RGBA16Float);
+    mpTaaFbo = Fbo::create2D(getDevice(), iw, ih, taaDesc);
+
+    mpPrevColor = getDevice()->createTexture2D(
+        iw, ih, ResourceFormat::RGBA16Float, 1, 1, nullptr,
+        ResourceBindFlags::ShaderResource | ResourceBindFlags::RenderTarget
+    );
+    mResetTaa = true;
+}
+
+void VernacularViewport::dispatchBoids(RenderContext* pRenderContext, float dt)
+{
+    if (!mBoidsEnabled || !mpBoidsCs || !mpBoids[0] || mShowMode != ShowMode::TempleSchool)
+        return;
+    auto var = mpBoidsCs->getRootVar();
+    var["gIn"] = mpBoids[mBoidSrc];
+    var["gOut"] = mpBoids[1 - mBoidSrc];
+    var["PerFrameCB"]["gCount"] = kBoidCount;
+    var["PerFrameCB"]["gDt"] = dt;
+    var["PerFrameCB"]["gTime"] = mTime;
+    var["PerFrameCB"]["gOrigin"] = mBoidOrigin;
+    var["PerFrameCB"]["gRadius"] = mBoidRadius;
+    mpBoidsCs->execute(pRenderContext, kBoidCount, 1, 1);
+    mBoidSrc = 1 - mBoidSrc;
+}
+
+void VernacularViewport::drawBoids(RenderContext* pRenderContext, const ref<Fbo>& pFbo)
+{
+    if (!mBoidsEnabled || !mpBoidPass || !mpBoids[mBoidSrc] || !mpCamera || mShowMode != ShowMode::TempleSchool)
+        return;
+    const float3 eye = mpCamera->getPosition();
+    const float3 fwd = lookDirFromYawPitch();
+    float3 right = normalize(cross(fwd, float3(0.f, 1.f, 0.f)));
+    if (length(right) < 1e-4f)
+        right = float3(1.f, 0.f, 0.f);
+    const float3 up = normalize(cross(right, fwd));
+
+    auto var = mpBoidPass->getRootVar();
+    var["gBoids"] = mpBoids[mBoidSrc];
+    var["PerFrameCB"]["gViewProj"] = mpCamera->getViewProjMatrix();
+    var["PerFrameCB"]["gCamPos"] = eye;
+    var["PerFrameCB"]["gSize"] = 0.11f;
+    var["PerFrameCB"]["gCamRight"] = right;
+    var["PerFrameCB"]["gTime"] = mTime;
+    var["PerFrameCB"]["gCamUp"] = up;
+    var["PerFrameCB"]["gCount"] = kBoidCount;
+    mpBoidPass->getState()->setFbo(pFbo);
+    mpBoidPass->draw(pRenderContext, kBoidCount * 6, 0);
+}
+
+void VernacularViewport::applyUpscale(RenderContext* pRenderContext, const ref<Fbo>& pSceneFbo, const ref<Fbo>& pTargetFbo)
+{
+    const auto& pColor = pSceneFbo->getColorTexture(0);
+    const auto& pDepth = pSceneFbo->getDepthStencilTexture();
+    ref<Texture> pPresent = pColor;
+
+    const bool wantTaa = (mUpscaleMode == UpscaleMode::TAA) && mpTaaPass && mpMvecPass && mpMvecFbo && mpTaaFbo && mpPrevColor && pDepth;
+
+    if (wantTaa && mpCamera)
+    {
+        const float4x4 viewProj = mpCamera->getViewProjMatrix();
+        const float4x4 invVP = mpCamera->getInvViewProjMatrix();
+        const float4x4 prevVP = mHavePrevViewProj ? mPrevViewProj : viewProj;
+
+        {
+            auto var = mpMvecPass->getRootVar();
+            var["PerFrameCB"]["gInvViewProj"] = invVP;
+            var["PerFrameCB"]["gPrevViewProj"] = prevVP;
+            var["gDepth"] = pDepth;
+            var["gSampler"] = mpLinearSampler;
+            mpMvecPass->execute(pRenderContext, mpMvecFbo);
+        }
+        {
+            auto var = mpTaaPass->getRootVar();
+            var["PerFrameCB"]["gAlpha"] = mResetTaa ? 1.f : 0.1f;
+            var["PerFrameCB"]["gColorBoxSigma"] = 1.f;
+            var["PerFrameCB"]["gAntiFlicker"] = 1u;
+            var["gTexColor"] = pColor;
+            var["gTexMotionVec"] = mpMvecFbo->getColorTexture(0);
+            var["gTexPrevColor"] = mpPrevColor;
+            var["gSampler"] = mpLinearSampler;
+            mpTaaPass->execute(pRenderContext, mpTaaFbo);
+        }
+        pPresent = mpTaaFbo->getColorTexture(0);
+        pRenderContext->blit(pPresent->getSRV(), mpPrevColor->getRTV());
+        mResetTaa = false;
+        mPrevViewProj = viewProj;
+        mHavePrevViewProj = true;
+    }
+    else
+    {
+        mResetTaa = true;
+    }
+
+    if (mpBlitPass && (mBicubicBlit || pPresent->getWidth() != pTargetFbo->getWidth()))
+    {
+        auto var = mpBlitPass->getRootVar();
+        var["PerFrameCB"]["gBicubic"] = mBicubicBlit ? 1u : 0u;
+        var["gSrc"] = pPresent;
+        var["gSampler"] = mpLinearSampler;
+        mpBlitPass->execute(pRenderContext, pTargetFbo);
+    }
+    else
+    {
+        pRenderContext->blit(
+            pPresent->getSRV(),
+            pTargetFbo->getRenderTargetView(0),
+            RenderContext::kMaxRect,
+            RenderContext::kMaxRect,
+            TextureFilteringMode::Linear
+        );
+    }
+}
+
 void VernacularViewport::onLoad(RenderContext* /*pRenderContext*/)
 {
+    loadSchoolPaths();
     initAudio();
     buildVernacularScene(getTargetFbo().get());
+    createSchoolPasses();
+    initBoids();
     mLastFrameTime = getGlobalClock().getTime();
     mAudioHaveLastEye = false;
+    if (const auto* fbo = getTargetFbo().get())
+        ensureUpscaleTargets(fbo->getWidth(), fbo->getHeight());
 }
 
 void VernacularViewport::onShutdown()
@@ -381,6 +827,8 @@ void VernacularViewport::onResize(uint32_t width, uint32_t height)
 {
     if (mpCamera && height > 0)
         mpCamera->setAspectRatio(float(width) / float(height));
+    ensureUpscaleTargets(width, height);
+    mResetTaa = true;
 }
 
 void VernacularViewport::switchShowMode(ShowMode mode)
@@ -659,7 +1107,7 @@ void VernacularViewport::buildVernacularScene(const Fbo* pTargetFbo)
     createRasterPass();
     updateCamera(0.f);
     mStatusMsg = (mShowMode == ShowMode::TempleSchool)
-                     ? "Temple School | [ ] looks | L light | RMB orbit | Tab move | F1 menus | F3 vibe | M mute"
+                     ? "Temple School | [ ] looks | L light | U upscale | B boids | F8 edit | F1 menus | F3 vibe | M mute"
                      : "Vibration Modes | [ ] chapters | V waves | RMB orbit | Tab move | F3 temple";
 }
 
@@ -824,6 +1272,54 @@ void VernacularViewport::onGuiRender(Gui* pGui)
             mLightMode = LightMode(light);
         w.text("L cycles lighting (same sun as sky / ocean)");
 
+        w.separator();
+        w.text("Upscale — render low, reconstruct high");
+        Gui::DropdownList upList = {
+            {uint32_t(UpscaleMode::Off), "Off — native res"},
+            {uint32_t(UpscaleMode::InternalScale), "Internal scale + blit"},
+            {uint32_t(UpscaleMode::TAA), "TAA (depth mvec + history)"},
+            {uint32_t(UpscaleMode::DLSS), "DLSS (unavailable)"},
+        };
+        uint32_t up = uint32_t(mUpscaleMode);
+        if (w.dropdown("Upscale", upList, up))
+        {
+            if (up == uint32_t(UpscaleMode::DLSS))
+            {
+                mStatusMsg = mDlssWhy;
+            }
+            else
+            {
+                mUpscaleMode = UpscaleMode(up);
+                mResetTaa = true;
+                if (mDisplayW && mDisplayH)
+                    ensureUpscaleTargets(mDisplayW, mDisplayH);
+            }
+        }
+        w.tooltip(mDlssWhy, true);
+        w.text(mDlssWhy);
+        if (mUpscaleMode != UpscaleMode::Off)
+        {
+            Gui::DropdownList scaleList = {
+                {0, "0.50 internal"},
+                {1, "0.67 internal"},
+                {2, "1.00 internal"},
+            };
+            if (w.dropdown("Internal scale", scaleList, mScaleIndex))
+            {
+                mResetTaa = true;
+                if (mDisplayW && mDisplayH)
+                    ensureUpscaleTargets(mDisplayW, mDisplayH);
+            }
+            w.checkbox("Bicubic blit (else bilinear)", mBicubicBlit);
+        }
+
+        w.separator();
+        w.checkbox("Boids (compute flock)", mBoidsEnabled);
+        w.text("B toggle — CS agents, VS/PS impostors. Research engines run flocks on compute.");
+        if (w.button("Open editor window (F8)"))
+            openSchoolEditor();
+        w.text("E is Fly-up — school editor is F8 / this button. VS + PS + Diff tabs.");
+
         if (w.button("< Prev"))
             mChapter = (mChapter + kChapterCount - 1) % kChapterCount;
         if (w.button("Next >", true))
@@ -875,6 +1371,14 @@ void VernacularViewport::onGuiRender(Gui* pGui)
         s.textWrapped(st.blurb);
         s.textWrapped(std::string("Tip: ") + st.tip);
         s.separator();
+        s.textWrapped(
+            "School passes: VS = vibration/placement (temple_vs). PS = looks + L lighting "
+            "(temple_ps). Compute = B boids. Diff = temple_diff in live (bwd_diff labs, not 3D raster). "
+            "Upscale = F1 Off / Internal / TAA — DLSS is NGX, not a rewrite."
+        );
+        if (s.button("Open editor window (F8)"))
+            openSchoolEditor();
+        s.separator();
         if (s.button("Prev [", true))
             mChapter = (mChapter + kChapterCount - 1) % kChapterCount;
         if (s.button("Next ]", true))
@@ -885,16 +1389,30 @@ void VernacularViewport::onGuiRender(Gui* pGui)
 void VernacularViewport::onFrameRender(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo)
 {
     const float4 clear = (mShowMode == ShowMode::TempleSchool) ? kClearTemple : kClearVibe;
-    pRenderContext->clearFbo(pTargetFbo.get(), clear, 1.0f, 0, FboAttachmentType::All);
 
     double now = getGlobalClock().getTime();
     float dt = float(std::max(0.0, now - mLastFrameTime));
     mLastFrameTime = now;
 
+    if (now - mLastLessonPoll > 0.45)
+    {
+        mLastLessonPoll = now;
+        syncLessonSourcesIfNeeded(false);
+    }
+
     if (mAnimate)
         mTime = float(now);
     updateCamera(dt);
     updateSoundscape(dt);
+    dispatchBoids(pRenderContext, dt);
+
+    ensureUpscaleTargets(pTargetFbo->getWidth(), pTargetFbo->getHeight());
+    const bool internal = usesInternalTarget() && mpSceneFbo;
+    const ref<Fbo>& pDrawFbo = internal ? mpSceneFbo : pTargetFbo;
+
+    pRenderContext->clearFbo(pDrawFbo.get(), clear, 1.0f, 0, FboAttachmentType::All);
+    if (internal)
+        pRenderContext->clearFbo(pTargetFbo.get(), clear, 1.0f, 0, FboAttachmentType::All);
 
     if (mpScene)
     {
@@ -904,14 +1422,23 @@ void VernacularViewport::onFrameRender(RenderContext* pRenderContext, const ref<
         if (is_set(updates, IScene::UpdateFlags::RecompileNeeded))
             createRasterPass();
 
-        setPerFrameVars(pTargetFbo.get());
-        mpRasterPass->getState()->setFbo(pTargetFbo);
+        setPerFrameVars(pDrawFbo.get());
+        mpRasterPass->getState()->setFbo(pDrawFbo);
         mpScene->rasterize(
             pRenderContext,
             mpRasterPass->getState().get(),
             mpRasterPass->getVars().get(),
             RasterizerState::CullMode::None
         );
+        drawBoids(pRenderContext, pDrawFbo);
+    }
+
+    if (internal)
+        applyUpscale(pRenderContext, pDrawFbo, pTargetFbo);
+    else if (mpCamera)
+    {
+        mPrevViewProj = mpCamera->getViewProjMatrix();
+        mHavePrevViewProj = true;
     }
 
     const auto& st = activeStation();
@@ -924,13 +1451,16 @@ void VernacularViewport::onFrameRender(RenderContext* pRenderContext, const ref<
     hud1 << "  |  " << moveModeName();
     if (mShowMode == ShowMode::TempleSchool)
         hud1 << "  |  " << lightModeName();
+    hud1 << "  |  " << upscaleModeName();
+    if (mBoidsEnabled && mShowMode == ShowMode::TempleSchool)
+        hud1 << "  |  Boids";
     getTextRenderer().render(pRenderContext, asciiForHud(hud1.str()), pTargetFbo, {16, 16});
     if (!mShowControls && !mShowStation)
     {
         getTextRenderer().render(pRenderContext, asciiForHud(st.blurb), pTargetFbo, {16, 40});
         const char* moveHint = (mMoveMode == MoveMode::Orbit)
-                                   ? "Orbit: RMB + wheel  |  Tab Fly  |  [ ] look  |  L light  |  F1 menus  |  F3 show  |  M mute"
-                                   : "Fly: WASD QE + RMB  |  Tab Orbit  |  [ ] look  |  L light  |  F1 menus  |  F3 show  |  M mute";
+                                   ? "Orbit: RMB + wheel  |  Tab Fly  |  [ ] look  |  L light  |  F1 menus  |  F3 show  |  F8 edit  |  B boids  |  M mute"
+                                   : "Fly: WASD QE + RMB  |  Tab Orbit  |  [ ] look  |  L light  |  F1 menus  |  F3 show  |  F8 edit  |  B boids  |  M mute";
         getTextRenderer().render(pRenderContext, asciiForHud(moveHint), pTargetFbo, {16, 64});
     }
 }
@@ -1010,6 +1540,24 @@ bool VernacularViewport::onKeyEvent(const KeyboardEvent& keyEvent)
         if (keyEvent.key == Input::Key::L)
         {
             cycleLightMode();
+            return true;
+        }
+        if (keyEvent.key == Input::Key::F8)
+        {
+            openSchoolEditor();
+            return true;
+        }
+        if (keyEvent.key == Input::Key::B)
+        {
+            mBoidsEnabled = !mBoidsEnabled;
+            mStatusMsg = mBoidsEnabled ? "Boids ON (compute flock)" : "Boids OFF";
+            return true;
+        }
+        if (keyEvent.key == Input::Key::U)
+        {
+            cycleUpscaleMode();
+            if (mDisplayW && mDisplayH)
+                ensureUpscaleTargets(mDisplayW, mDisplayH);
             return true;
         }
         if (keyEvent.key == Input::Key::LeftBracket)
@@ -1101,10 +1649,12 @@ bool VernacularViewport::onMouseEvent(const MouseEvent& mouseEvent)
 
 void VernacularViewport::onHotReload(HotReloadFlags reloaded)
 {
+    syncLessonSourcesIfNeeded(true);
     if (is_set(reloaded, HotReloadFlags::Program) && mpScene)
     {
         resolveMaterialIds();
         createRasterPass();
+        createSchoolPasses();
         mStatusMsg = "Hot-reloaded shaders";
     }
 }

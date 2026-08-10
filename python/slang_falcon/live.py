@@ -9,6 +9,7 @@ Usage:
     python -m slang_falcon.live --lesson 0
     python -m slang_falcon.live --lesson bos/00_hello
     python -m slang_falcon.live --shader slang/lab_kernels.slang --entry hello_pixel --size 640
+    python -m slang_falcon.live --school-3d --files temple_vs.slang temple_ps.slang temple_diff.slang
     python -m slang_falcon.live --once   # smoke: one frame, no window
 
 Curriculum nav: ``[`` / Left / PageUp = prev, ``]`` / Right / PageDown = next,
@@ -2450,6 +2451,8 @@ def run_live(
     *,
     lessons: list[Lesson] | None = None,
     lesson_index: int | None = None,
+    school_tabs: list[tuple[str, Path]] | None = None,
+    school_3d: bool = False,
 ) -> int:
     """Open a pygame window with in-window editor + temp hotswap recompile."""
     try:
@@ -2463,7 +2466,29 @@ def run_live(
     if not shader.exists():
         raise SystemExit(f"shader not found: {shader}")
 
+    school_bufs: list[dict[str, Any]] = []
+    school_i = 0
+    preview_i = 0
+    if school_tabs:
+        for lab, pth in school_tabs:
+            rp = _resolve_shader(pth)
+            if not rp.exists():
+                raise SystemExit(f"school tab shader not found: {rp}")
+            text = _read_shader_source(rp)
+            school_bufs.append(
+                {"label": lab, "path": rp, "text": text, "disk": text}
+            )
+        preview_i = 0
+        for i, buf in enumerate(school_bufs):
+            if "hello_pixel" in buf["text"] or buf["path"].name.endswith("_diff.slang"):
+                preview_i = i
+        shader = school_bufs[preview_i]["path"]
+        school_i = 0
+
     curriculum = lessons if lessons is not None else load_curriculum()
+    if school_3d:
+        curriculum = []
+        lesson_index = None
     cur_lesson_i = lesson_index
     if cur_lesson_i is None and curriculum:
         # Best-effort: match starting shader to a curriculum entry.
@@ -2556,7 +2581,10 @@ def run_live(
     code_cache_surf: Any = None
     code_cache_key: tuple[Any, ...] | None = None
     editor = CodeEditor()
-    editor.set_text(_read_shader_source(shader), dirty=False)
+    if school_bufs:
+        editor.set_text(school_bufs[school_i]["text"], dirty=False)
+    else:
+        editor.set_text(_read_shader_source(shader), dirty=False)
     # Start unfocused so [ ] / arrows bank through examples immediately.
     editor.focused = False
     lesson_lines: list[str] = []
@@ -2577,6 +2605,16 @@ def run_live(
         "[live] AA: ShaderToy ports (ocean/circle) use 3x3 supersample + light present sharpen",
         "[live] Ctrl+Z/Y undo/redo · select + Ctrl+C/X/V · resize window to reflow",
     ]
+    if school_3d:
+        console_lines.append(
+            "[school] VS / PS / Diff tabs — Save writes the active file for Falcor F5"
+        )
+        console_lines.append(
+            "[school] preview is Diff (hello_pixel). VS/PS edit 3D Temple, not this 2D view."
+        )
+        console_lines.append(
+            "[school] Diff = [Differentiable] lab twin; 3D raster does not run bwd_diff this pass."
+        )
     if curriculum:
         console_lines.append(
             "[live] curriculum: [ / Left prev · ] / Right next · Ctrl+[ / ] always · L list · 0-9 · < >"
@@ -2595,8 +2633,35 @@ def run_live(
     real_mtime = _file_mtime(shader)
     pressed_btn: str | None = None
 
+    school_tab_rects: list[tuple[int, Any]] = []
+
+    def _preview_text() -> str:
+        if not school_bufs:
+            return editor.get_text()
+        if school_i == preview_i:
+            return editor.get_text()
+        return str(school_bufs[preview_i]["text"])
+
     def write_hotswap() -> None:
-        hotswap.write_text(editor.get_text(), encoding="utf-8", newline="\n")
+        hotswap.write_text(_preview_text(), encoding="utf-8", newline="\n")
+
+    def switch_school_tab(new_i: int) -> None:
+        nonlocal school_i, real_mtime
+        if not school_bufs or new_i == school_i:
+            return
+        school_bufs[school_i]["text"] = editor.get_text()
+        school_i = new_i
+        buf = school_bufs[school_i]
+        editor.set_text(str(buf["text"]), dirty=False)
+        editor._saved_text = str(buf["disk"])
+        editor.dirty = str(buf["text"]) != str(buf["disk"])
+        editor.scroll_y = 0
+        editor.scroll_x = 0
+        real_mtime = _file_mtime(buf["path"])
+        caption()
+        log(f"[school] tab {buf['label']} — {buf['path'].name}")
+        if school_i != preview_i:
+            log("[school] preview stays on Diff; Save this file then F5 in VernacularViewport")
 
     # Seed temp from editor before first compile.
     write_hotswap()
@@ -2669,6 +2734,9 @@ def run_live(
 
     def caption() -> None:
         star = "*" if editor.dirty else ""
+        if school_3d:
+            pygame.display.set_caption("VERNACULAR — 3D school VS/PS/Diff")
+            return
         pygame.display.set_caption(
             f"VERNACULAR — {lesson_title_bit()}{shader.name}{star}::{entry}"
         )
@@ -2790,11 +2858,19 @@ def run_live(
         reload_btn = pygame.Rect(bx + _BTN_W + _BTN_GAP, by, _BTN_W + 8, _BTN_H)
         prev_btn = empty
         next_btn = empty
+        school_tab_rects.clear()
         if curriculum:
             prev_btn = pygame.Rect(
                 reload_btn.right + _BTN_GAP + 8, by, 36, _BTN_H
             )
             next_btn = pygame.Rect(prev_btn.right + _BTN_GAP, by, 36, _BTN_H)
+        elif school_bufs:
+            tx = reload_btn.right + _BTN_GAP + 8
+            for i, buf in enumerate(school_bufs):
+                tw = max(40, 10 * len(str(buf["label"])) + 16)
+                r = pygame.Rect(tx, by, tw, _BTN_H)
+                school_tab_rects.append((i, r))
+                tx = r.right + 4
         close_btn = empty
         amber_btn = empty
         green_btn = empty
@@ -2935,6 +3011,9 @@ def run_live(
 
     def schedule_edit_recompile() -> None:
         nonlocal edit_recompile_at
+        if school_bufs and school_i != preview_i:
+            caption()
+            return
         edit_recompile_at = time.monotonic() + _EDIT_DEBOUNCE_S
         caption()
 
@@ -3005,23 +3084,32 @@ def run_live(
     def do_save() -> None:
         nonlocal real_mtime
         try:
-            shader.write_text(editor.get_text(), encoding="utf-8", newline="\n")
+            target = school_bufs[school_i]["path"] if school_bufs else shader
+            text = editor.get_text()
+            target.write_text(text, encoding="utf-8", newline="\n")
+            if school_bufs:
+                school_bufs[school_i]["text"] = text
+                school_bufs[school_i]["disk"] = text
             write_hotswap()
             editor.mark_saved()
-            real_mtime = _file_mtime(shader)
+            real_mtime = _file_mtime(target)
             caption()
-            log(f"[save] wrote {shader}")
+            log(f"[save] wrote {target}")
         except OSError as exc:
             log(f"[save] FAILED: {exc}")
 
     def do_reload_from_disk(*, discard_dirty: bool = True) -> None:
         nonlocal real_mtime, edit_recompile_at
         was_dirty = editor.dirty
-        text = _read_shader_source(shader)
+        src = school_bufs[school_i]["path"] if school_bufs else shader
+        text = _read_shader_source(src)
         editor.set_text(text, dirty=False)
+        if school_bufs:
+            school_bufs[school_i]["text"] = text
+            school_bufs[school_i]["disk"] = text
         editor.scroll_y = 0
         editor.scroll_x = 0
-        real_mtime = _file_mtime(shader)
+        real_mtime = _file_mtime(src)
         edit_recompile_at = None
         caption()
         if was_dirty and discard_dirty:
@@ -3345,6 +3433,13 @@ def run_live(
                     elif next_btn.width and next_btn.collidepoint(event.pos):
                         pressed_btn = "next"
                         lesson_delta(1)
+                    elif school_bufs and any(
+                        tr.width and tr.collidepoint(event.pos) for _, tr in school_tab_rects
+                    ):
+                        for ti, tr in school_tab_rects:
+                            if tr.width and tr.collidepoint(event.pos):
+                                switch_school_tab(ti)
+                                break
                     elif (
                         lesson_rect.width
                         and lesson_rect.collidepoint(event.pos)
@@ -3601,7 +3696,8 @@ def run_live(
         elif (now - last_poll) >= poll_s:
             last_poll = now
             # If real file changed externally and buffer is clean, reload from disk.
-            cur_real = _file_mtime(shader)
+            watch = school_bufs[school_i]["path"] if school_bufs else shader
+            cur_real = _file_mtime(watch)
             if not editor.dirty and cur_real != real_mtime and cur_real >= 0:
                 log("[disk] real file changed (editor clean) — reloading")
                 do_reload_from_disk(discard_dirty=False)
@@ -3774,9 +3870,27 @@ def run_live(
                     ">",
                     pressed=pressed_btn == "next",
                 )
+            for ti, tr in school_tab_rects:
+                tl = local(tr)
+                lab = str(school_bufs[ti]["label"]) if school_bufs else str(ti)
+                if ti == school_i:
+                    lab = f"[{lab}]"
+                _draw_button(
+                    canvas,
+                    pygame,
+                    btn_font,
+                    tl,
+                    lab,
+                    pressed=ti == school_i,
+                )
             star = "*" if editor.dirty else ""
             name_anchor = next_l.right if next_l.width else reload_l.right
-            name_surf = btn_font.render(f"{shader.name}{star}", True, (176, 184, 198))
+            if school_tab_rects:
+                name_anchor = max(name_anchor, local(school_tab_rects[-1][1]).right)
+            shown_name = (
+                school_bufs[school_i]["path"].name if school_bufs else shader.name
+            )
+            name_surf = btn_font.render(f"{shown_name}{star}", True, (176, 184, 198))
             name_x = name_anchor + _BTN_GAP + 4
             canvas.blit(
                 name_surf,
@@ -4037,6 +4151,29 @@ def main(argv: list[str] | None = None) -> int:
         default=0.0,
         help="With --once (or as initial live clock offset), seconds passed as float time",
     )
+    p.add_argument(
+        "--files",
+        nargs="+",
+        type=Path,
+        default=None,
+        help="Open multiple .slang files as editor tabs (VS / PS / Diff school)",
+    )
+    p.add_argument(
+        "--labels",
+        type=str,
+        default=None,
+        help="Comma labels matching --files (e.g. VS,PS,Diff)",
+    )
+    p.add_argument(
+        "--no-curriculum",
+        action="store_true",
+        help="Do not load lesson bank (keep --files tabs)",
+    )
+    p.add_argument(
+        "--school-3d",
+        action="store_true",
+        help="Temple 3D school window: stable caption, no curriculum nav",
+    )
     args = p.parse_args(argv)
 
     width = args.width or args.size
@@ -4045,7 +4182,29 @@ def main(argv: list[str] | None = None) -> int:
     curriculum = load_curriculum()
     lesson: Lesson | None = None
     lesson_index: int | None = None
-    if args.lesson is not None:
+    school_tabs: list[tuple[str, Path]] | None = None
+    if args.files:
+        labels = (
+            [x.strip() for x in args.labels.split(",")]
+            if args.labels
+            else [p.stem for p in args.files]
+        )
+        while len(labels) < len(args.files):
+            labels.append(args.files[len(labels)].stem)
+        school_tabs = [
+            (labels[i], _resolve_shader(args.files[i])) for i in range(len(args.files))
+        ]
+        preview = school_tabs[-1][1]
+        for lab, pth in school_tabs:
+            if pth.name.endswith("_diff.slang"):
+                preview = pth
+                break
+        shader = preview
+        entry = args.entry or "hello_pixel"
+        if args.no_curriculum or args.school_3d:
+            curriculum = []
+            lesson_index = None
+    elif args.lesson is not None:
         lesson = find_lesson(args.lesson, curriculum)
         lesson_index = lesson.index
         shader = lesson.shader
@@ -4078,6 +4237,8 @@ def main(argv: list[str] | None = None) -> int:
         height,
         lessons=curriculum,
         lesson_index=lesson_index,
+        school_tabs=school_tabs,
+        school_3d=bool(args.school_3d or school_tabs),
     )
 
 

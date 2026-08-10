@@ -125,6 +125,29 @@ if ($Build) {
     }
     Write-Host "Synced runtime shader -> $shaderDst"
 
+    # Iteration 7 — school editor launcher + lesson sync paths (F8 / live --files).
+    $repoRoot = Split-Path $RepoNative -Parent
+    $venvPy = Join-Path $repoRoot ".venv\Scripts\python.exe"
+    if (-not (Test-Path $venvPy)) { $venvPy = "python" }
+    $lessonsRepo = Join-Path $SampleSrc "lessons"
+    $binCfg = Join-Path $binRoot $Config
+    $pathsTxt = Join-Path $binCfg "vernacular_school_paths.txt"
+    @(
+        "REPO_LESSONS=$lessonsRepo"
+        "PYTHON=$venvPy"
+        "REPO_ROOT=$repoRoot"
+    ) | Set-Content -Path $pathsTxt -Encoding UTF8
+    $cmdPath = Join-Path $binCfg "vernacular_school_editor.cmd"
+    $vs = Join-Path $lessonsRepo "temple_vs.slang"
+    $ps = Join-Path $lessonsRepo "temple_ps.slang"
+    $diff = Join-Path $lessonsRepo "temple_diff.slang"
+    @"
+@echo off
+cd /d "$repoRoot"
+"$venvPy" -m slang_falcon.live --school-3d --no-curriculum --entry hello_pixel --size 512 --files "$vs" "$ps" "$diff" --labels VS,PS,Diff
+"@ | Set-Content -Path $cmdPath -Encoding ASCII
+    Write-Host "School editor: $cmdPath"
+
     $ext = Join-Path $binRoot "$Config\python\falcor\falcor_ext.cp310-win_amd64.pyd"
     if (-not (Test-Path $ext)) {
         $ext = Join-Path $binRoot "$Config\python\falcor\falcor_ext.pyd"
