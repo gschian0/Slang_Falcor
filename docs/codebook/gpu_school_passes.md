@@ -16,7 +16,7 @@ Vertex shader owns **where the mesh sits** after the scene transform:
 - Vibration Modes (`F3`): standing-wave displacement on lattice cubes (`gVertexWaves` / `gVibeAmp`).
 - Temple ocean: flatten the water grid to the deck so the **pixel** shader can raymarch beauty.
 
-Edit VS → Save in the school window → Falcor copies into the shader cache → **F5**.
+Edit VS in **F8** → **Ctrl+S** writes repo + runtime shaders → GPU reload (or **F5**).
 
 ---
 
@@ -52,7 +52,7 @@ Research engines put agents, particles, and fields on **CS** because the neighbo
 **File:** `lessons/temple_diff.slang` (2D live `hello_pixel`)  
 **Sisters:** [`../../labs/diffslang/d01_differentiable_attr.slang`](../../labs/diffslang/shaders/d01_differentiable_attr.slang) · [`../../labs/slang_playground/sp08_autodiff.slang`](../../labs/slang_playground/shaders/sp08_autodiff.slang) · neural N03
 
-The Diff tab is a DiffSlang-style `[Differentiable]` field + analytic ∂L/∂x twin. **Falcor 3D raster does not run `bwd_diff` this pass** — train/fit stays in 2D live / labs CLIs (`train_brdf`, slangpy). That is honest: autodiff is a compiler feature you compose, not a checkbox on the swapchain.
+The F8 **Diff** tab shows this module marked **not in 3D PSO**. **Falcor 3D raster does not run `bwd_diff` this pass** — train/fit stays in 2D live / labs CLIs (`train_brdf`, slangpy). That is honest: autodiff is a compiler feature you compose, not a checkbox on the swapchain.
 
 ---
 
@@ -71,6 +71,6 @@ NIS / FSR are not first-class Falcor 8.0 passes here. NRD is a path-tracer denoi
 
 ---
 
-## Open the editor window
+## Open the in-app editor
 
-**F8** or F1/F2 **Open editor window** — second OS window: `python -m slang_falcon.live --school-3d` with VS / PS / Diff tabs. **E** stays Fly-up. Save a tab, then **F5** in the 3D view (or wait ~0.5 s file watch).
+**F8** (or F1 **Slang editor**) — ImGui panel in `VernacularViewport.exe`: **VS / PS / CS / Diff**. Loads the Slang Falcor compiled under `shaders/Samples/VernacularViewport/`. **Ctrl+S** saves repo + runtime then reloads. **E** stays Fly-up. **Not** `python -m slang_falcon.live`.

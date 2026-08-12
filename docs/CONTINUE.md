@@ -4,7 +4,7 @@
 
 **Date pinned:** 2026-08-04  
 **Round 1:** complete — [`ROUND1.md`](ROUND1.md)  
-**3D show:** Temple of Secret Knowledge (Iteration 3) — Vibration Modes pinned (Iteration 2, `F3`) · Orbit/Fly (Iteration 4) · spatial audio (Iteration 5) · square plane / world UV / lighting / water reflections (Iteration 6) · upscale / F8 school editor / compute boids (Iteration 7)
+**3D show:** Temple of Secret Knowledge (Iteration 3) — Vibration Modes pinned (Iteration 2, `F3`) · Orbit/Fly (Iteration 4) · spatial audio (Iteration 5) · square plane / world UV / lighting / water reflections (Iteration 6) · upscale / compute boids (Iteration 7) · in-Falcor F8 editor + flock UI / chirps (Iteration 8)
 
 ---
 
@@ -90,7 +90,7 @@ Also: [`roadmap.md`](roadmap.md)
 
 ## NEXT (true priority)
 
-1. **Temple of Secret Knowledge** (primary 3D show) — Iteration 7 cheap upscale + F8 VS/PS/Diff editor + compute boids landed (Iteration 6 plane/UV/light/water kept):
+1. **Temple of Secret Knowledge** (primary 3D show) — Iteration 8 in-Falcor F8 editor + boid count/settings/chirps (Iteration 7 upscale kept; Iteration 6 plane/UV/light/water kept):
    - Sources: `native/samples/VernacularViewport/`
    - Pass school: [`codebook/gpu_school_passes.md`](codebook/gpu_school_passes.md)
    - Codebook: [`codebook/never_ending_slang.md`](codebook/never_ending_slang.md)

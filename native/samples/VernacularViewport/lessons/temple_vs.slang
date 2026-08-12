@@ -1,4 +1,4 @@
-// Temple / Vibration vertex — school file (edit in VERNACULAR live, F5 / file-watch reload).
+// Temple / Vibration vertex — school file (edit in F8 in-app editor, Ctrl+S / F5 reload).
 // Vertex = placement + vibration. Ocean deck is flattened here; beauty is raymarched in PS.
 
 VSOut vsMain(VSIn vIn)

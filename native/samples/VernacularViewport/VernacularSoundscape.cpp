@@ -107,7 +107,9 @@ VernacularSoundscape::SpatialResult VernacularSoundscape::evaluate(const Listene
     const Vec3 toSrc = sub3(source.position, listener.position);
     r.distance = length3(toSrc);
     r.distanceGain = distanceGain(r.distance);
-    r.dopplerRatio = (dopplerEnabled && source.kind == SourceKind::Bowl) ? dopplerRatio(listener, source) : 1.f;
+    r.dopplerRatio = (dopplerEnabled && (source.kind == SourceKind::Bowl || source.kind == SourceKind::ChirpHook))
+                         ? dopplerRatio(listener, source)
+                         : 1.f;
 
     Vec3 forward = normalize3(listener.forward, {0.f, 0.f, -1.f});
     Vec3 up = normalize3(listener.up, {0.f, 1.f, 0.f});
@@ -442,7 +444,7 @@ void VernacularSoundscape::audioThreadMain()
                         noiseLpf = noiseLpf * 0.96f + nextWhite() * 0.04f;
                         mono = noiseLpf * src.amps[0];
                     }
-                    else if (src.kind == SourceKind::Bowl)
+                    else if (src.kind == SourceKind::Bowl || src.kind == SourceKind::ChirpHook)
                     {
                         const double dop = double(sp.dopplerRatio);
                         for (int p = 0; p < kMaxPartials; ++p)
@@ -455,7 +457,6 @@ void VernacularSoundscape::audioThreadMain()
                             mono += src.amps[p] * float(std::sin(phase[s][p]));
                         }
                     }
-                    // ChirpHook: reserved — silence this pass.
 
                     left += mono * sp.leftGain * gain;
                     right += mono * sp.rightGain * gain;

@@ -1,6 +1,6 @@
 # Never-ending Slang — VERNACULAR codebook (Falcor 3D)
 
-> Living story in Slang. **Default show:** Temple of Secret Knowledge (Iteration 3+6+7).  
+> Living story in Slang. **Default show:** Temple of Secret Knowledge (Iteration 3+6+7+8).  
 > **Pinned:** Vibration Modes of Cube (Iteration 2) — toggle **F3**.  
 > **How to run:** [`../RUNBOOK.md`](../RUNBOOK.md) · iterations [`../plans/vernacular-viewport-iterations.md`](../plans/vernacular-viewport-iterations.md)  
 > **Pass school:** [`gpu_school_passes.md`](gpu_school_passes.md) — VS / PS / CS / autodiff / upscale walkthrough.
@@ -11,7 +11,7 @@
 **Autodiff (2D live):** `lessons/temple_diff.slang`  
 **Env kernels:** `lessons/temple_env.slang`  
 **Looks:** `lessons/shading_ladder.slang`  
-**2D sister:** `python -m slang_falcon.lessons` · **F8** school window: `python -m slang_falcon.live --school-3d`
+**2D sister:** `python -m slang_falcon.lessons` · **F8** in-Falcor Slang editor (not live.py)
 
 ---
 
@@ -25,7 +25,7 @@
 - Ocean reflects the three canvases at their true placement + contact wet — Iteration 6  
 - Spatial singing-bowl on the lesson plane (distance + pan + Doppler; **M** mute) — Iteration 5  
 - **Upscale** Off / Internal / TAA (**U**) — render low, reconstruct high; DLSS = NGX, greyed in SampleApp — Iteration 7  
-- **F8** shader school window (VS / PS / Diff tabs) · **B** compute boids over ocean/sky — Iteration 7
+- **F8** in-app Slang editor (VS / PS / CS / Diff) · **B** compute boids + chirps / size mix — Iteration 8
 
 ## Vibration Modes of Cube (pinned)
 

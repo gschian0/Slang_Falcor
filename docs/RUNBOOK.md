@@ -3,14 +3,14 @@
 You are not guessing. This is the operating sheet.
 
 **Repo:** `D:\WindowsProgramming\Slang_Falcor`  
-**3D show (primary):** Falcor `VernacularViewport` — **Temple of Secret Knowledge** (Iteration 3, UV/light/water **Iteration 6**, upscale/editor/boids **Iteration 7**)  
+**3D show (primary):** Falcor `VernacularViewport` — **Temple of Secret Knowledge** (Iteration 3, UV/light/water **Iteration 6**, upscale/boids **Iteration 7**, in-app editor + flock UI **Iteration 8**)  
 **Pinned show:** **Vibration Modes of Cube** (Iteration 2) — `F3`  
 **Camera:** Orbit / Fly (Iteration 4) — `Tab` or F1 → Movement  
-**Audio:** Spatial bowl + distance / Doppler (Iteration 5) — **M** mute  
+**Audio:** Spatial bowl + distance / Doppler (Iteration 5) — **M** mute · boid chirps when **B**  
 **Lighting:** Unlit / Lambert / Blinn / Physical (**L** or F1) — same sun as sky / ocean  
 **Upscale:** Off / Internal scale / TAA (**U** or F1) — DLSS greyed (NGX / Mogwai)  
-**School editor:** **F8** — second window VS / PS / Diff  
-**Boids:** **B** — compute flock  
+**School editor:** **F8** — in-Falcor ImGui VS / PS / CS / Diff (not live.py)  
+**Boids:** **B** — compute flock + settings panel  
 **Codebook:** [`codebook/never_ending_slang.md`](codebook/never_ending_slang.md) · [`codebook/gpu_school_passes.md`](codebook/gpu_school_passes.md)  
 **Iterations:** [`plans/vernacular-viewport-iterations.md`](plans/vernacular-viewport-iterations.md)  
 **Omniverse:** [`plans/vernacular-omniverse-bridge.md`](plans/vernacular-omniverse-bridge.md) — not Kit today; compose via Slang/USD later
@@ -67,7 +67,7 @@ No Shader Man · no ORCA / PathTracer as primary · no claim of Omniverse Kit ho
 | **F1** | Menus (show / Movement / Lighting / **Upscale** / boids / editor / env / water / mute) |
 | **F2** | Chapter / station tip + school pass walkthrough |
 | **F3** | Temple ↔ Vibration Modes |
-| **F8** | Open / focus shader school window (VS / PS / Diff) — **E** is Fly-up |
+| **F8** | Toggle in-app Slang editor (VS / PS / CS / Diff) — **E** is Fly-up · **Ctrl+S** save+reload |
 | **M** | Mute audio |
 | **F5** | Hot-reload shaders (also copies repo `lessons/` → shader cache) |
 | **V** / **,** **.** | Waves / amp — Vibration mode only |
@@ -97,10 +97,10 @@ How research apps do this — not a checkbox:
 1. **Vertex** (`temple_vs.slang`) — vibration + ocean deck placement.  
 2. **Pixel** (`temple_ps.slang`) — looks + **L** lighting + env.  
 3. **Compute** (**B** boids) — agents/fields on CS; impostors rasterized after.  
-4. **Differential** (`temple_diff.slang` in F8 Diff tab) — `[Differentiable]` / labs DiffSlang; 3D does not run `bwd_diff` this pass.  
+4. **Differential** (`temple_diff.slang` in F8 Diff tab) — `[Differentiable]` / labs DiffSlang; **not in the 3D PSO** this pass (`bwd_diff` stays in labs / 2D live).  
 5. **Upscale** — render low, reconstruct high. Internal blit always; TAA from depth mvec; **DLSS is NGX** (`DLSSPass.dll` + `nvngx_dlss.dll` already in bin). Greyed here: SampleApp has no Mogwai `RenderData`. Use the research SDK — don't rewrite UNIX.
 
-**F8** opens `python -m slang_falcon.live --school-3d` on those three files. Save → 3D file-watch / F5.
+**F8** toggles an **in-Falcor ImGui editor** on the files the sample compiled (`bin/.../shaders/Samples/VernacularViewport/lessons/` + repo `native/samples/VernacularViewport/lessons/`). **Ctrl+S** / Save writes both then hot-reloads (same as **F5**). Does **not** launch `live.py`.
 
 ### Exit checks
 
@@ -112,8 +112,8 @@ How research apps do this — not a checkbox:
 | Water reflections | Shapes appear under their true XZ; wet patches under footprints |
 | F1 env / water / lighting | Sun, haze, chop, **L** change the world together |
 | F1 Upscale Internal 0.67 | Softer / cheaper; TAA steadies shimmer when orbiting |
-| F8 | Second OS window with VS / PS / Diff tabs |
-| B | Flock over ocean/sky; canvases still read |
+| F8 | In-app editor (not pygame); Save+reload updates Temple |
+| B | Flock + settings; size mix; soft chirps (M mutes) |
 | F3 | Vibration Modes grids restore |
 | M | Spatial bowl mutes; graphics keep running |
 

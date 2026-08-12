@@ -1,5 +1,6 @@
 // Classic Reynolds boids — compute school file (separation / alignment / cohesion).
 // Dispatch each frame; raster impostors read the same structured buffer. No Scene.Raster.
+// Iteration 8: host sliders drive weights / speed / neighbor scale. Count is gCount (buffer is max-sized).
 
 struct Boid
 {
@@ -20,6 +21,14 @@ cbuffer PerFrameCB
     float gPad;
     float3 gOrigin;
     float gRadius;
+    float gSepW;
+    float gAliW;
+    float gCohW;
+    float gMaxSpeed;
+    float gNeighborR;
+    float gPad1;
+    float gPad2;
+    float gPad3;
 };
 
 [shader("compute")]
@@ -37,9 +46,10 @@ void main(uint3 tid : SV_DispatchThreadID)
     uint nAli = 0;
     uint nCoh = 0;
 
-    const float sepDist = 0.85f;
-    const float aliDist = 2.4f;
-    const float cohDist = 3.6f;
+    float nr = max(gNeighborR, 0.15f);
+    const float sepDist = 0.85f * nr;
+    const float aliDist = 2.4f * nr;
+    const float cohDist = 3.6f * nr;
 
     for (uint j = 0; j < gCount; j++)
     {
@@ -65,11 +75,11 @@ void main(uint3 tid : SV_DispatchThreadID)
     }
 
     float3 acc = float3(0, 0, 0);
-    acc += sep * 0.55f;
+    acc += sep * gSepW;
     if (nAli > 0)
-        acc += (ali / float(nAli) - me.vel) * 0.12f;
+        acc += (ali / float(nAli) - me.vel) * gAliW;
     if (nCoh > 0)
-        acc += ((coh / float(nCoh)) - me.pos) * 0.045f;
+        acc += ((coh / float(nCoh)) - me.pos) * gCohW;
 
     // Soft keep-in: flock over ocean / sky around gOrigin, not on canvases.
     float3 toC = gOrigin - me.pos;
@@ -81,7 +91,7 @@ void main(uint3 tid : SV_DispatchThreadID)
     float dt = saturate(gDt) * 1.6f + 0.008f;
     me.vel += acc * dt;
     float spd = length(me.vel);
-    float maxSpd = 4.2f + 0.6f * sin(gTime * 0.35f + float(i) * 0.05f);
+    float maxSpd = gMaxSpeed + 0.6f * sin(gTime * 0.35f + float(i) * 0.05f);
     if (spd > maxSpd)
         me.vel *= maxSpd / spd;
     if (spd < 0.35f)

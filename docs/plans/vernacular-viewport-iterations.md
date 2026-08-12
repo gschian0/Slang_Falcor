@@ -427,3 +427,50 @@ cd D:\WindowsProgramming\Slang_Falcor\native\external\Falcor\build\windows-vs202
 | Internal scale + TAA ladder | Artists want native-only — leave Upscale Off |
 | F8 live school window | Prefer in-process ImGui editor later |
 | Boids as overlay toggle | Want a bank chapter instead — don't steal `[` `]` looks |
+
+---
+
+## Iteration 8 — 2026-08-10
+
+### Intent / what user asked
+
+**F8 opened `slang_falcon.live` / pygame** — wrong. Edit **in Falcor** the Slang the sample actually compiled. Also: **way more boids**, count slider + flock settings, **size variation**, **low sine chirps** (pitch inverse to size), voice cap. No live.py. No commit.
+
+### What changed
+
+| Area | Behavior |
+|------|----------|
+| **F8 editor** | In-app ImGui panel (same Falcor window). Tabs **VS / PS / CS / Diff**. PS combo: `temple_ps` / `shading_ladder` / `temple_env`. Diff marked **not in 3D PSO**. **Does not** spawn `python -m slang_falcon.live`. |
+| Load | Reads runtime `bin/Release/shaders/Samples/VernacularViewport/lessons/` (what Falcor compiles), fallback repo `native/samples/VernacularViewport/lessons/`. |
+| Save | **Ctrl+S** / button writes **repo + runtime**, then `reloadAllPrograms(true)` + recreate raster/compute (same as F5). Compile errors shown in the panel. |
+| **Boids** | Default **1024**, slider **32–4096** (buffers sized to max). Settings panel on **B** / F1: sep / ali / coh / speed / size min·max / neighbor R / flock R. |
+| **Chirps** | 16 WASAPI sine voices via Iteration 5 `ChirpHook` slots. Random timing + freq jitter; smaller = higher, larger = lower (~135–380 Hz). Spatial distance/pan/Doppler reused. |
+| Sync script | Stops writing `vernacular_school_editor.cmd`. Still writes `vernacular_school_paths.txt` (`REPO_LESSONS`). |
+
+**Preserved:** Temple default, F3 Vibration, Orbit/Fly, **M** mute bowl, **L** lighting, **U** upscale, analytic raster.
+
+### Files
+
+| Path | Role |
+|------|------|
+| `VernacularViewport.{h,cpp}` | ImGui editor, boid UI, chirp scheduler |
+| `VernacularSoundscape.{h,cpp}` | 16 chirp slots; ChirpHook mixes sines |
+| `lessons/boids.{cs,3d}.slang` | Slider uniforms + per-id size hash |
+| `native/scripts/sync_vernacular_viewport.ps1` | No live.py launcher |
+
+### Controls (new / changed)
+
+| Input | Action |
+|-------|--------|
+| **F8** | Toggle in-app Slang editor (not live.py). **E** remains Fly-up. |
+| **Ctrl+S** | Save active school files + hot-reload GPU |
+| **B** | Toggle boids + open Boids settings panel |
+| Boids panel | Count, flock params, size min/max, chirp enable / rate / gain |
+
+### Keep vs revert
+
+| Keep | Revert if |
+|------|-----------|
+| In-Falcor F8 editor | Never go back to spawning pygame as the 3D editor |
+| 1024 default / 4096 cap | FPS dies — slide count down (O(N²) CS) |
+| 16 chirp voices | Want quieter temple — uncheck Chirps |

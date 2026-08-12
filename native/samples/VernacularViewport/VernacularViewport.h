@@ -1,7 +1,8 @@
 // VERNACULAR — Temple of Secret Knowledge (Iteration 3+).
 // Vibration Modes of Cube = Iteration 2, pinned behind ShowMode::VibrationModes.
 // Iteration 4: Orbit/Fly — Iteration 5: spatial audio — Iteration 6: square plane / UV / light / water.
-// Iteration 7: cheap upscale ladder + shader school window + compute boids.
+// Iteration 7: cheap upscale ladder + compute boids.
+// Iteration 8: in-Falcor ImGui Slang editor (F8) + boid count / flock settings.
 #pragma once
 
 #include "Falcor.h"
@@ -11,6 +12,7 @@
 #include "Core/Pass/FullScreenPass.h"
 #include "VernacularSoundscape.h"
 
+#include <array>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -72,6 +74,19 @@ public:
         const char* tip;
     };
 
+    // Files Falcor actually compiles (or school Diff module, not in 3D PSO).
+    struct SchoolFile
+    {
+        const char* tab = "";
+        const char* name = "";
+        const char* hint = "";
+        bool inRaster = false;
+        bool inCompute = false;
+        std::string text;
+        bool dirty = false;
+        bool loaded = false;
+    };
+
 private:
     void buildVernacularScene(const Fbo* pTargetFbo);
     void buildTempleScene(SceneBuilder& builder, const Fbo* pTargetFbo);
@@ -99,15 +114,27 @@ private:
     void shutdownAudio();
     void updateSoundscape(float dt);
 
-    // Iteration 7
+    // Iteration 7 / 8
     void loadSchoolPaths();
+    void initSchoolFiles();
     void syncLessonSourcesIfNeeded(bool force);
-    void openSchoolEditor();
+    void loadSchoolEditorFromDisk(bool forceAll);
+    void toggleShaderEditor();
+    void renderShaderEditor(Gui* pGui);
+    void renderBoidsPanel(Gui* pGui);
+    bool saveSchoolEditor(bool reloadAfter);
+    bool writeTextFile(const std::filesystem::path& path, const std::string& text) const;
+    std::string readTextFile(const std::filesystem::path& path) const;
+    SchoolFile* activeSchoolFile();
+    void reloadLiveShaders();
     void ensureUpscaleTargets(uint32_t displayW, uint32_t displayH);
     void createSchoolPasses();
     void initBoids();
     void dispatchBoids(RenderContext* pRenderContext, float dt);
     void drawBoids(RenderContext* pRenderContext, const ref<Fbo>& pFbo);
+    void updateBoidChirps(float dt, const float3& eye);
+    static float boidSize01(uint32_t id);
+    float3 boidAudioPos(uint32_t id) const;
     void applyUpscale(RenderContext* pRenderContext, const ref<Fbo>& pSceneFbo, const ref<Fbo>& pTargetFbo);
     bool usesInternalTarget() const;
     float internalScale() const;
@@ -207,22 +234,52 @@ private:
     uint32_t mDisplayW = 0;
     uint32_t mDisplayH = 0;
 
-    // Iteration 7 — compute boids
-    static constexpr uint32_t kBoidCount = 128;
+    // Iteration 7/8 — compute boids (buffers sized to kBoidMax; mBoidCount is live).
+    static constexpr uint32_t kBoidMax = 4096;
+    static constexpr uint32_t kBoidMin = 32;
+    uint32_t mBoidCount = 1024;
     bool mBoidsEnabled = false;
+    bool mShowBoidsPanel = false;
     ref<ComputePass> mpBoidsCs;
     ref<RasterPass> mpBoidPass;
     ref<Buffer> mpBoids[2];
     uint32_t mBoidSrc = 0;
     float3 mBoidOrigin = float3(0.f, 7.5f, -14.f);
     float mBoidRadius = 16.f;
+    float mBoidSep = 0.55f;
+    float mBoidAli = 0.12f;
+    float mBoidCoh = 0.045f;
+    float mBoidMaxSpeed = 4.2f;
+    float mBoidSizeMin = 0.055f;
+    float mBoidSizeMax = 0.20f;
+    float mBoidNeighborR = 1.f;
+    bool mBoidChirps = true;
+    float mBoidChirpRate = 8.f; // flock-total peeps / sec (not per agent)
+    float mBoidChirpGain = 0.55f;
+    float mBoidChirpAccum = 0.f;
+    uint32_t mBoidChirpRng = 0xC2B2AE35u;
+    struct BoidChirpVoice
+    {
+        bool active = false;
+        float age = 0.f;
+        float dur = 0.14f;
+        float freq = 220.f;
+        uint32_t boidId = 0;
+    };
+    std::array<BoidChirpVoice, VernacularSoundscape::kChirpCount> mBoidChirpVoices{};
 
-    // School editor + lesson sync
+    // Iteration 8 — in-app Slang editor (F8). Indices: 0 VS, 1 PS, 2 ladder, 3 env, 4 CS, 5 Diff.
+    static constexpr int kSchoolFileCount = 6;
+    std::array<SchoolFile, kSchoolFileCount> mSchoolFiles{};
+    int mSchoolTab = 0; // 0 VS 1 PS 2 CS 3 Diff
+    int mPsPick = 0;    // 0 temple_ps 1 shading_ladder 2 temple_env
+    bool mShowShaderEditor = false;
+    bool mSchoolLoaded = false;
+    std::string mCompileError;
+
     std::filesystem::path mRepoLessons;
     std::filesystem::path mShaderLessons;
     std::filesystem::path mRepoRoot;
-    std::filesystem::path mPythonExe;
-    std::filesystem::path mEditorCmd;
     std::string mDlssWhy;
     double mLastLessonPoll = 0.0;
 

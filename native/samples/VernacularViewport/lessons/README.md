@@ -13,6 +13,6 @@
 
 **Active show (default):** Temple of Secret Knowledge — Iteration 3+6+7  
 **Pinned:** Vibration Modes of Cube — Iteration 2 (`F3` or Show mode dropdown)  
-**Editor:** F8 → `python -m slang_falcon.live --school-3d` on VS / PS / Diff  
+**Editor:** F8 → in-Falcor ImGui (VS / PS / CS / Diff) — not live.py. Ctrl+S saves + reloads.  
 
 See `docs/codebook/gpu_school_passes.md`, `docs/plans/vernacular-viewport-iterations.md`, `docs/RUNBOOK.md`.

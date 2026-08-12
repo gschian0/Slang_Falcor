@@ -10,24 +10,20 @@
 #include "Utils/UI/TextRenderer.h"
 #include "Core/API/RasterizerState.h"
 #include "Core/Platform/OS.h"
+#include "Core/Program/ProgramManager.h"
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <imgui.h>
 #include <random>
 #include <sstream>
 #include <string>
 #include <vector>
-
-#ifdef _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
-#endif
 
 FALCOR_EXPORT_D3D12_AGILITY_SDK
 
@@ -412,14 +408,7 @@ void VernacularViewport::updateSoundscape(float dt)
     atmosphere.lookBoost = 1.f;
     mSoundscape.setSource(VernacularSoundscape::kAtmosphereSlot, atmosphere);
 
-    // Chirp hooks (slots 2–4): reserved / silent this pass.
-    for (int i = 0; i < VernacularSoundscape::kChirpCount; ++i)
-    {
-        VernacularSoundscape::Source chirp;
-        chirp.enabled = false;
-        chirp.kind = VernacularSoundscape::SourceKind::ChirpHook;
-        mSoundscape.setSource(VernacularSoundscape::kChirpSlot0 + i, chirp);
-    }
+    updateBoidChirps(dt, eye);
 }
 
 void VernacularViewport::loadSchoolPaths()
@@ -430,7 +419,6 @@ void VernacularViewport::loadSchoolPaths()
         "-- NGX is the research SDK, not a hamster-wheel rewrite.";
 
     const auto runtime = getRuntimeDirectory();
-    mEditorCmd = runtime / "vernacular_school_editor.cmd";
     mShaderLessons = runtime / "shaders" / "Samples" / "VernacularViewport" / "lessons";
 
     const auto pathsFile = runtime / "vernacular_school_paths.txt";
@@ -451,8 +439,6 @@ void VernacularViewport::loadSchoolPaths()
                 val.pop_back();
             if (key == "REPO_LESSONS")
                 mRepoLessons = val;
-            else if (key == "PYTHON")
-                mPythonExe = val;
             else if (key == "REPO_ROOT")
                 mRepoRoot = val;
         }
@@ -474,6 +460,312 @@ void VernacularViewport::loadSchoolPaths()
             p = p.parent_path();
         }
     }
+
+    initSchoolFiles();
+}
+
+void VernacularViewport::initSchoolFiles()
+{
+    mSchoolFiles[0] = {"VS", "temple_vs.slang", "Vertex — in raster PSO (vsMain)", true, false, {}, false, false};
+    mSchoolFiles[1] = {"PS", "temple_ps.slang", "Pixel entry — in raster PSO (psMain)", true, false, {}, false, false};
+    mSchoolFiles[2] = {"PS", "shading_ladder.slang", "Looks include — in raster PSO", true, false, {}, false, false};
+    mSchoolFiles[3] = {"PS", "temple_env.slang", "Ocean / sky / land include — in raster PSO", true, false, {}, false, false};
+    mSchoolFiles[4] = {"CS", "boids.cs.slang", "Compute flock — in compute PSO (B)", false, true, {}, false, false};
+    mSchoolFiles[5] = {"Diff", "temple_diff.slang", "Autodiff school module — NOT in 3D PSO", false, false, {}, false, false};
+}
+
+std::string VernacularViewport::readTextFile(const std::filesystem::path& path) const
+{
+    std::ifstream in(path, std::ios::binary);
+    if (!in)
+        return {};
+    std::ostringstream ss;
+    ss << in.rdbuf();
+    return ss.str();
+}
+
+bool VernacularViewport::writeTextFile(const std::filesystem::path& path, const std::string& text) const
+{
+    std::error_code ec;
+    if (path.has_parent_path())
+        std::filesystem::create_directories(path.parent_path(), ec);
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+    if (!out)
+        return false;
+    out.write(text.data(), std::streamsize(text.size()));
+    return bool(out);
+}
+
+void VernacularViewport::loadSchoolEditorFromDisk(bool forceAll)
+{
+    for (auto& f : mSchoolFiles)
+    {
+        if (f.dirty && !forceAll)
+            continue;
+        std::filesystem::path runtime = mShaderLessons.empty() ? std::filesystem::path{} : (mShaderLessons / f.name);
+        std::filesystem::path repo = mRepoLessons.empty() ? std::filesystem::path{} : (mRepoLessons / f.name);
+        std::string text;
+        if (!runtime.empty() && std::filesystem::exists(runtime))
+            text = readTextFile(runtime);
+        else if (!repo.empty() && std::filesystem::exists(repo))
+            text = readTextFile(repo);
+        if (text.empty() && !repo.empty() && std::filesystem::exists(repo))
+            text = readTextFile(repo);
+        f.text = std::move(text);
+        f.loaded = !f.text.empty();
+        f.dirty = false;
+    }
+    mSchoolLoaded = true;
+}
+
+VernacularViewport::SchoolFile* VernacularViewport::activeSchoolFile()
+{
+    int idx = 0;
+    if (mSchoolTab == 0)
+        idx = 0;
+    else if (mSchoolTab == 1)
+        idx = 1 + std::clamp(mPsPick, 0, 2);
+    else if (mSchoolTab == 2)
+        idx = 4;
+    else
+        idx = 5;
+    return &mSchoolFiles[idx];
+}
+
+void VernacularViewport::toggleShaderEditor()
+{
+    mShowShaderEditor = !mShowShaderEditor;
+    if (mShowShaderEditor)
+    {
+        if (!mSchoolLoaded)
+            loadSchoolEditorFromDisk(false);
+        mStatusMsg = "Slang editor (in-app) — Ctrl+S / Save reloads GPU";
+    }
+    else
+        mStatusMsg = "Slang editor closed";
+}
+
+static int slangEditorResizeCb(ImGuiInputTextCallbackData* data)
+{
+    if (data->EventFlag == ImGuiInputTextFlags_CallbackResize)
+    {
+        auto* str = static_cast<std::string*>(data->UserData);
+        str->resize(size_t(data->BufTextLen));
+        data->Buf = str->data();
+    }
+    return 0;
+}
+
+void VernacularViewport::renderShaderEditor(Gui* pGui)
+{
+    if (!pGui)
+        return;
+    Gui::Window ed(pGui, "Slang — loaded PSO", mShowShaderEditor, {760, 580}, {24, 48});
+    if (!mShowShaderEditor)
+        return;
+
+    if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S, false))
+        saveSchoolEditor(true);
+
+    ed.text("F8 toggles. Edits the Slang Falcor compiled (runtime shaders + repo lessons/). Not live.py.");
+    if (ed.button("Save + reload (Ctrl+S)"))
+        saveSchoolEditor(true);
+    if (ed.button("Reload from disk", true))
+        loadSchoolEditorFromDisk(true);
+    if (ed.button("F5 reload only", true))
+        reloadLiveShaders();
+
+    if (ImGui::BeginTabBar("SchoolTabs"))
+    {
+        const char* labels[4] = {"VS", "PS", "CS", "Diff"};
+        for (int t = 0; t < 4; ++t)
+        {
+            bool dirtyTab = false;
+            if (t == 0)
+                dirtyTab = mSchoolFiles[0].dirty;
+            else if (t == 1)
+                dirtyTab = mSchoolFiles[1].dirty || mSchoolFiles[2].dirty || mSchoolFiles[3].dirty;
+            else if (t == 2)
+                dirtyTab = mSchoolFiles[4].dirty;
+            else
+                dirtyTab = mSchoolFiles[5].dirty;
+            char tabLabel[32];
+            std::snprintf(tabLabel, sizeof(tabLabel), dirtyTab ? "%s *" : "%s", labels[t]);
+            if (ImGui::BeginTabItem(tabLabel))
+            {
+                mSchoolTab = t;
+                ImGui::EndTabItem();
+            }
+        }
+        ImGui::EndTabBar();
+    }
+
+    if (mSchoolTab == 1)
+    {
+        Gui::DropdownList psList = {
+            {0, "temple_ps.slang (psMain)"},
+            {1, "shading_ladder.slang (looks)"},
+            {2, "temple_env.slang (ocean/sky/land)"},
+        };
+        uint32_t pick = uint32_t(mPsPick);
+        if (ed.dropdown("PS module", psList, pick))
+            mPsPick = int(pick);
+    }
+
+    SchoolFile* file = activeSchoolFile();
+    if (!file)
+        return;
+
+    char pathLine[512];
+    std::snprintf(
+        pathLine, sizeof(pathLine), "%s  |  %s", file->name,
+        file->inRaster ? "in raster PSO" : (file->inCompute ? "in compute PSO" : "NOT in 3D PSO")
+    );
+    ed.text(pathLine);
+    ed.text(file->hint);
+    if (!mShaderLessons.empty())
+        ed.text(std::string("Runtime: ") + (mShaderLessons / file->name).string());
+    if (!mRepoLessons.empty())
+        ed.text(std::string("Repo: ") + (mRepoLessons / file->name).string());
+
+    if (!file->loaded && file->text.empty())
+        ed.text("File missing on disk — save will create it.");
+
+    if (file->text.capacity() < 64)
+        file->text.reserve(8192);
+
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.07f, 0.08f, 0.10f, 1.f));
+    const ImGuiInputTextFlags flags =
+        ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_CallbackResize;
+    if (ImGui::InputTextMultiline(
+            "##slangSrc", file->text.data(), file->text.capacity() + 1,
+            ImVec2(-1.f, -120.f), flags, slangEditorResizeCb, &file->text
+        ))
+    {
+        file->dirty = true;
+        file->loaded = true;
+    }
+    ImGui::PopStyleColor();
+
+    if (!mCompileError.empty())
+    {
+        ed.separator();
+        ed.textWrapped(std::string("Compile: ") + mCompileError);
+    }
+    else if (!mStatusMsg.empty())
+        ed.text(mStatusMsg);
+}
+
+bool VernacularViewport::saveSchoolEditor(bool reloadAfter)
+{
+    bool any = false;
+    bool ok = true;
+    for (auto& f : mSchoolFiles)
+    {
+        if (!f.dirty && f.loaded)
+            continue;
+        if (!f.dirty && !f.loaded)
+            continue;
+        if (!f.dirty)
+            continue;
+
+        bool wrote = false;
+        if (!mRepoLessons.empty())
+        {
+            if (!writeTextFile(mRepoLessons / f.name, f.text))
+            {
+                ok = false;
+                mStatusMsg = std::string("Save failed (repo): ") + f.name;
+            }
+            else
+                wrote = true;
+        }
+        if (!mShaderLessons.empty())
+        {
+            if (!writeTextFile(mShaderLessons / f.name, f.text))
+            {
+                ok = false;
+                mStatusMsg = std::string("Save failed (runtime shaders): ") + f.name;
+            }
+            else
+                wrote = true;
+        }
+        if (wrote)
+        {
+            f.dirty = false;
+            any = true;
+        }
+    }
+
+    if (!any && ok)
+    {
+        // Save current tab even if not marked dirty (Ctrl+S always writes active).
+        SchoolFile* cur = activeSchoolFile();
+        if (cur)
+        {
+            if (!mRepoLessons.empty())
+                writeTextFile(mRepoLessons / cur->name, cur->text);
+            if (!mShaderLessons.empty())
+                writeTextFile(mShaderLessons / cur->name, cur->text);
+            cur->dirty = false;
+            any = true;
+        }
+    }
+
+    if (any && reloadAfter)
+        reloadLiveShaders();
+    else if (any)
+        mStatusMsg = "Saved school Slang (no reload)";
+    return ok && any;
+}
+
+void VernacularViewport::reloadLiveShaders()
+{
+    try
+    {
+        if (auto pDev = getDevice())
+            pDev->getProgramManager()->reloadAllPrograms(true);
+        if (mpScene)
+        {
+            createRasterPass();
+            createSchoolPasses();
+        }
+        if (mCompileError.empty())
+            mStatusMsg = "Saved + hot-reloaded GPU shaders";
+    }
+    catch (const std::exception& e)
+    {
+        mCompileError = e.what();
+        mStatusMsg = "Shader compile failed — see editor";
+    }
+}
+
+void VernacularViewport::renderBoidsPanel(Gui* pGui)
+{
+    if (!pGui)
+        return;
+    Gui::Window b(pGui, "Boids", mShowBoidsPanel, {360, 340}, {790, 48});
+    if (!mShowBoidsPanel)
+        return;
+
+    b.checkbox("Enable flock (B)", mBoidsEnabled);
+    b.text("Compute Reynolds flock. O(N^2) neighborhood — drop count if FPS dips.");
+    if (b.slider("Count", mBoidCount, kBoidMin, kBoidMax))
+        mBoidCount = std::clamp(mBoidCount, kBoidMin, kBoidMax);
+    b.slider("Separation", mBoidSep, 0.f, 2.5f);
+    b.slider("Alignment", mBoidAli, 0.f, 1.5f);
+    b.slider("Cohesion", mBoidCoh, 0.f, 0.4f);
+    b.slider("Max speed", mBoidMaxSpeed, 0.5f, 12.f);
+    b.slider("Size min", mBoidSizeMin, 0.03f, 0.35f);
+    b.slider("Size max", mBoidSizeMax, 0.04f, 0.45f);
+    b.slider("Neighbor radius", mBoidNeighborR, 0.25f, 3.f);
+    b.slider("Flock radius", mBoidRadius, 4.f, 40.f);
+    b.separator();
+    b.text("Chirps — low sines, 16 voices max. Pitch inverse to size.");
+    b.checkbox("Chirps", mBoidChirps);
+    b.slider("Chirp rate", mBoidChirpRate, 0.f, 24.f);
+    b.slider("Chirp gain", mBoidChirpGain, 0.f, 1.5f);
+    b.text(std::to_string(mBoidCount) + " / " + std::to_string(kBoidMax) + " agents");
 }
 
 void VernacularViewport::syncLessonSourcesIfNeeded(bool force)
@@ -531,74 +823,6 @@ void VernacularViewport::syncLessonSourcesIfNeeded(bool force)
     }
 }
 
-#ifdef _WIN32
-static HWND gSchoolHwnd = nullptr;
-static BOOL CALLBACK focusVernacularSchoolWnd(HWND hwnd, LPARAM)
-{
-    wchar_t title[320];
-    if (GetWindowTextW(hwnd, title, 320) <= 0)
-        return TRUE;
-    if (wcsstr(title, L"VERNACULAR") && wcsstr(title, L"3D school"))
-    {
-        gSchoolHwnd = hwnd;
-        return FALSE;
-    }
-    return TRUE;
-}
-#endif
-
-void VernacularViewport::openSchoolEditor()
-{
-#ifdef _WIN32
-    gSchoolHwnd = nullptr;
-    EnumWindows(focusVernacularSchoolWnd, 0);
-    if (gSchoolHwnd)
-    {
-        ShowWindow(gSchoolHwnd, SW_RESTORE);
-        SetForegroundWindow(gSchoolHwnd);
-        mStatusMsg = "Focused shader school window";
-        return;
-    }
-#endif
-
-    if (!mEditorCmd.empty() && std::filesystem::exists(mEditorCmd))
-    {
-#ifdef _WIN32
-        ShellExecuteW(nullptr, L"open", mEditorCmd.wstring().c_str(), nullptr,
-                      mRepoRoot.empty() ? nullptr : mRepoRoot.wstring().c_str(), SW_SHOWNORMAL);
-#else
-        executeProcess("cmd", std::string("/c \"") + mEditorCmd.string() + "\"");
-#endif
-        mStatusMsg = "Opened shader school (VS / PS / Diff)";
-        return;
-    }
-
-    if (!mPythonExe.empty() && !mRepoLessons.empty())
-    {
-        std::ostringstream args;
-        args << "-m slang_falcon.live --no-curriculum --school-3d --entry hello_pixel --size 512"
-             << " --files \"" << (mRepoLessons / "temple_vs.slang").string() << "\""
-             << " \"" << (mRepoLessons / "temple_ps.slang").string() << "\""
-             << " \"" << (mRepoLessons / "temple_diff.slang").string() << "\""
-             << " --labels VS,PS,Diff";
-        std::string py = mPythonExe.string();
-        if (py.size() > 4 && py.substr(py.size() - 4) == ".exe")
-            py = py.substr(0, py.size() - 4);
-        try
-        {
-            executeProcess(py, args.str());
-            mStatusMsg = "Opened shader school (VS / PS / Diff)";
-        }
-        catch (...)
-        {
-            mStatusMsg = "School editor failed — check vernacular_school_paths.txt";
-        }
-        return;
-    }
-
-    mStatusMsg = "School editor missing — rebuild with sync_vernacular_viewport.ps1 -Build";
-}
-
 void VernacularViewport::createSchoolPasses()
 {
     auto pDev = getDevice();
@@ -628,7 +852,155 @@ void VernacularViewport::createSchoolPasses()
     catch (const std::exception& e)
     {
         logWarning("VernacularViewport school passes: {}", e.what());
+        mCompileError = e.what();
         mStatusMsg = std::string("School pass compile: ") + e.what();
+    }
+}
+
+float VernacularViewport::boidSize01(uint32_t id)
+{
+    float x = std::sin(float(id) * 12.9898f + 78.233f) * 43758.5453f;
+    return x - std::floor(x);
+}
+
+float3 VernacularViewport::boidAudioPos(uint32_t id) const
+{
+    const float h1 = boidSize01(id);
+    const float h2 = boidSize01(id + 17u);
+    const float h3 = boidSize01(id + 31u);
+    const float ang = h1 * 6.2831853f + mTime * (0.12f + h2 * 0.22f);
+    const float rad = mBoidRadius * (0.22f + 0.70f * h3);
+    return mBoidOrigin + float3(std::cos(ang) * rad, (h2 - 0.5f) * 4.2f, std::sin(ang) * rad);
+}
+
+void VernacularViewport::updateBoidChirps(float dt, const float3& eye)
+{
+    const bool live = mBoidChirps && mBoidsEnabled && mShowMode == ShowMode::TempleSchool && !mAudioMute;
+    auto nextU = [this]() {
+        mBoidChirpRng ^= mBoidChirpRng << 13;
+        mBoidChirpRng ^= mBoidChirpRng >> 17;
+        mBoidChirpRng ^= mBoidChirpRng << 5;
+        return mBoidChirpRng;
+    };
+    auto next01 = [&]() { return float(nextU() & 0x00FFFFFFu) / float(0x01000000u); };
+
+    if (!live)
+    {
+        mBoidChirpAccum = 0.f;
+        for (auto& v : mBoidChirpVoices)
+            v.active = false;
+        for (int i = 0; i < VernacularSoundscape::kChirpCount; ++i)
+        {
+            VernacularSoundscape::Source chirp;
+            chirp.enabled = false;
+            chirp.kind = VernacularSoundscape::SourceKind::ChirpHook;
+            mSoundscape.setSource(VernacularSoundscape::kChirpSlot0 + i, chirp);
+        }
+        return;
+    }
+
+    dt = std::clamp(dt, 0.f, 0.1f);
+    const float jitter = 0.65f + 0.70f * next01();
+    mBoidChirpAccum += std::max(0.f, mBoidChirpRate) * dt * jitter;
+
+    auto voiceBusy = [&](uint32_t boidId) {
+        for (const auto& v : mBoidChirpVoices)
+            if (v.active && v.boidId == boidId)
+                return true;
+        return false;
+    };
+
+    auto pickBoid = [&]() -> uint32_t {
+        const uint32_t n = std::max(1u, mBoidCount);
+        // Mix: nearest of a small random sample, else a fresh random index.
+        uint32_t best = nextU() % n;
+        float bestD = 1e9f;
+        for (int s = 0; s < 24; ++s)
+        {
+            uint32_t id = nextU() % n;
+            if (voiceBusy(id))
+                continue;
+            float3 p = boidAudioPos(id);
+            float d = length(p - eye);
+            if (d < bestD)
+            {
+                bestD = d;
+                best = id;
+            }
+        }
+        if (next01() < 0.35f)
+            best = nextU() % n;
+        return best;
+    };
+
+    while (mBoidChirpAccum >= 1.f)
+    {
+        mBoidChirpAccum -= 1.f;
+        int slot = -1;
+        for (int i = 0; i < int(mBoidChirpVoices.size()); ++i)
+        {
+            if (!mBoidChirpVoices[static_cast<size_t>(i)].active)
+            {
+                slot = i;
+                break;
+            }
+        }
+        if (slot < 0)
+            break;
+
+        const uint32_t id = pickBoid();
+        const float size01 = boidSize01(id);
+        // Inverse size → freq; keep low / pleasant (not a unison beep).
+        float f = 380.f + (135.f - 380.f) * size01;
+        f *= (0.94f + 0.12f * next01());
+        auto& v = mBoidChirpVoices[static_cast<size_t>(slot)];
+        v.active = true;
+        v.age = 0.f;
+        v.dur = 0.07f + 0.16f * next01();
+        v.freq = f;
+        v.boidId = id;
+    }
+
+    for (int i = 0; i < VernacularSoundscape::kChirpCount; ++i)
+    {
+        auto& v = mBoidChirpVoices[static_cast<size_t>(i)];
+        VernacularSoundscape::Source chirp;
+        chirp.kind = VernacularSoundscape::SourceKind::ChirpHook;
+        if (!v.active)
+        {
+            chirp.enabled = false;
+            mSoundscape.setSource(VernacularSoundscape::kChirpSlot0 + i, chirp);
+            continue;
+        }
+        v.age += dt;
+        if (v.age >= v.dur)
+        {
+            v.active = false;
+            chirp.enabled = false;
+            mSoundscape.setSource(VernacularSoundscape::kChirpSlot0 + i, chirp);
+            continue;
+        }
+        const float u = v.age / std::max(v.dur, 1e-4f);
+        float env = 1.f;
+        if (u < 0.12f)
+            env = u / 0.12f;
+        else
+            env = 1.f - (u - 0.12f) / 0.88f;
+        env = std::clamp(env, 0.f, 1.f);
+        env *= env; // slightly softer decay
+
+        const float3 pos = boidAudioPos(v.boidId);
+        chirp.enabled = true;
+        chirp.position = {pos.x, pos.y, pos.z};
+        chirp.velocity = {0.f, 0.f, 0.f};
+        chirp.freqs[0] = v.freq;
+        chirp.freqs[1] = v.freq * 2.02f;
+        chirp.freqs[2] = 0.f;
+        chirp.amps[0] = 0.075f * mBoidChirpGain * env;
+        chirp.amps[1] = 0.018f * mBoidChirpGain * env;
+        chirp.amps[2] = 0.f;
+        chirp.lookBoost = 1.f;
+        mSoundscape.setSource(VernacularSoundscape::kChirpSlot0 + i, chirp);
     }
 }
 
@@ -641,13 +1013,13 @@ void VernacularViewport::initBoids()
         float vel[3];
         float pad1;
     };
-    std::vector<BoidCPU> init(kBoidCount);
+    std::vector<BoidCPU> init(kBoidMax);
     std::mt19937 rng(7);
     std::uniform_real_distribution<float> dx(-12.f, 12.f);
     std::uniform_real_distribution<float> dy(-2.5f, 4.5f);
     std::uniform_real_distribution<float> dz(-10.f, 8.f);
     std::uniform_real_distribution<float> dv(-1.2f, 1.2f);
-    for (uint32_t i = 0; i < kBoidCount; ++i)
+    for (uint32_t i = 0; i < kBoidMax; ++i)
     {
         init[i].pos[0] = mBoidOrigin.x + dx(rng);
         init[i].pos[1] = mBoidOrigin.y + dy(rng);
@@ -659,10 +1031,10 @@ void VernacularViewport::initBoids()
     }
     auto flags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess;
     mpBoids[0] = getDevice()->createStructuredBuffer(
-        uint32_t(sizeof(BoidCPU)), kBoidCount, flags, MemoryType::DeviceLocal, init.data(), false
+        uint32_t(sizeof(BoidCPU)), kBoidMax, flags, MemoryType::DeviceLocal, init.data(), false
     );
     mpBoids[1] = getDevice()->createStructuredBuffer(
-        uint32_t(sizeof(BoidCPU)), kBoidCount, flags, MemoryType::DeviceLocal, init.data(), false
+        uint32_t(sizeof(BoidCPU)), kBoidMax, flags, MemoryType::DeviceLocal, init.data(), false
     );
     mBoidSrc = 0;
 }
@@ -705,15 +1077,21 @@ void VernacularViewport::dispatchBoids(RenderContext* pRenderContext, float dt)
 {
     if (!mBoidsEnabled || !mpBoidsCs || !mpBoids[0] || mShowMode != ShowMode::TempleSchool)
         return;
+    mBoidCount = std::clamp(mBoidCount, kBoidMin, kBoidMax);
     auto var = mpBoidsCs->getRootVar();
     var["gIn"] = mpBoids[mBoidSrc];
     var["gOut"] = mpBoids[1 - mBoidSrc];
-    var["PerFrameCB"]["gCount"] = kBoidCount;
+    var["PerFrameCB"]["gCount"] = mBoidCount;
     var["PerFrameCB"]["gDt"] = dt;
     var["PerFrameCB"]["gTime"] = mTime;
     var["PerFrameCB"]["gOrigin"] = mBoidOrigin;
     var["PerFrameCB"]["gRadius"] = mBoidRadius;
-    mpBoidsCs->execute(pRenderContext, kBoidCount, 1, 1);
+    var["PerFrameCB"]["gSepW"] = mBoidSep;
+    var["PerFrameCB"]["gAliW"] = mBoidAli;
+    var["PerFrameCB"]["gCohW"] = mBoidCoh;
+    var["PerFrameCB"]["gMaxSpeed"] = mBoidMaxSpeed;
+    var["PerFrameCB"]["gNeighborR"] = mBoidNeighborR;
+    mpBoidsCs->execute(pRenderContext, mBoidCount, 1, 1);
     mBoidSrc = 1 - mBoidSrc;
 }
 
@@ -721,24 +1099,28 @@ void VernacularViewport::drawBoids(RenderContext* pRenderContext, const ref<Fbo>
 {
     if (!mBoidsEnabled || !mpBoidPass || !mpBoids[mBoidSrc] || !mpCamera || mShowMode != ShowMode::TempleSchool)
         return;
+    mBoidCount = std::clamp(mBoidCount, kBoidMin, kBoidMax);
     const float3 eye = mpCamera->getPosition();
     const float3 fwd = lookDirFromYawPitch();
     float3 right = normalize(cross(fwd, float3(0.f, 1.f, 0.f)));
     if (length(right) < 1e-4f)
         right = float3(1.f, 0.f, 0.f);
     const float3 up = normalize(cross(right, fwd));
+    const float sizeMin = std::min(mBoidSizeMin, mBoidSizeMax);
+    const float sizeMax = std::max(mBoidSizeMin, mBoidSizeMax);
 
     auto var = mpBoidPass->getRootVar();
     var["gBoids"] = mpBoids[mBoidSrc];
     var["PerFrameCB"]["gViewProj"] = mpCamera->getViewProjMatrix();
     var["PerFrameCB"]["gCamPos"] = eye;
-    var["PerFrameCB"]["gSize"] = 0.11f;
+    var["PerFrameCB"]["gSizeMin"] = sizeMin;
     var["PerFrameCB"]["gCamRight"] = right;
-    var["PerFrameCB"]["gTime"] = mTime;
+    var["PerFrameCB"]["gSizeMax"] = sizeMax;
     var["PerFrameCB"]["gCamUp"] = up;
-    var["PerFrameCB"]["gCount"] = kBoidCount;
+    var["PerFrameCB"]["gCount"] = mBoidCount;
+    var["PerFrameCB"]["gTime"] = mTime;
     mpBoidPass->getState()->setFbo(pFbo);
-    mpBoidPass->draw(pRenderContext, kBoidCount * 6, 0);
+    mpBoidPass->draw(pRenderContext, mBoidCount * 6, 0);
 }
 
 void VernacularViewport::applyUpscale(RenderContext* pRenderContext, const ref<Fbo>& pSceneFbo, const ref<Fbo>& pTargetFbo)
@@ -1139,11 +1521,21 @@ void VernacularViewport::resolveMaterialIds()
 void VernacularViewport::createRasterPass()
 {
     FALCOR_ASSERT(mpScene);
-    ProgramDesc desc;
-    desc.addShaderModules(mpScene->getShaderModules());
-    desc.addShaderLibrary("Samples/VernacularViewport/VernacularViewport.3d.slang").vsEntry("vsMain").psEntry("psMain");
-    desc.addTypeConformances(mpScene->getTypeConformances());
-    mpRasterPass = RasterPass::create(getDevice(), desc, mpScene->getSceneDefines());
+    try
+    {
+        ProgramDesc desc;
+        desc.addShaderModules(mpScene->getShaderModules());
+        desc.addShaderLibrary("Samples/VernacularViewport/VernacularViewport.3d.slang").vsEntry("vsMain").psEntry("psMain");
+        desc.addTypeConformances(mpScene->getTypeConformances());
+        mpRasterPass = RasterPass::create(getDevice(), desc, mpScene->getSceneDefines());
+        mCompileError.clear();
+    }
+    catch (const std::exception& e)
+    {
+        mCompileError = e.what();
+        mStatusMsg = std::string("Raster compile: ") + e.what();
+        logWarning("VernacularViewport raster: {}", e.what());
+    }
 }
 
 void VernacularViewport::updateCamera(float dt)
@@ -1233,6 +1625,11 @@ void VernacularViewport::setPerFrameVars(const Fbo* /*pTargetFbo*/)
 
 void VernacularViewport::onGuiRender(Gui* pGui)
 {
+    if (mShowShaderEditor)
+        renderShaderEditor(pGui);
+    if (mShowBoidsPanel && mShowMode == ShowMode::TempleSchool)
+        renderBoidsPanel(pGui);
+
     if (!mShowControls && !mShowStation)
         return;
 
@@ -1314,11 +1711,13 @@ void VernacularViewport::onGuiRender(Gui* pGui)
         }
 
         w.separator();
-        w.checkbox("Boids (compute flock)", mBoidsEnabled);
+        if (w.checkbox("Boids (compute flock)", mBoidsEnabled))
+            mShowBoidsPanel = mBoidsEnabled;
+        w.checkbox("Boids settings panel", mShowBoidsPanel);
         w.text("B toggle — CS agents, VS/PS impostors. Research engines run flocks on compute.");
-        if (w.button("Open editor window (F8)"))
-            openSchoolEditor();
-        w.text("E is Fly-up — school editor is F8 / this button. VS + PS + Diff tabs.");
+        if (w.button("Slang editor (F8)"))
+            toggleShaderEditor();
+        w.text("E is Fly-up. F8 is in-app ImGui (VS / PS / CS / Diff) — not live.py.");
 
         if (w.button("< Prev"))
             mChapter = (mChapter + kChapterCount - 1) % kChapterCount;
@@ -1373,11 +1772,11 @@ void VernacularViewport::onGuiRender(Gui* pGui)
         s.separator();
         s.textWrapped(
             "School passes: VS = vibration/placement (temple_vs). PS = looks + L lighting "
-            "(temple_ps). Compute = B boids. Diff = temple_diff in live (bwd_diff labs, not 3D raster). "
+            "(temple_ps + ladder + env). Compute = B boids. Diff = temple_diff (not in 3D PSO). "
             "Upscale = F1 Off / Internal / TAA — DLSS is NGX, not a rewrite."
         );
-        if (s.button("Open editor window (F8)"))
-            openSchoolEditor();
+        if (s.button("Slang editor (F8)"))
+            toggleShaderEditor();
         s.separator();
         if (s.button("Prev [", true))
             mChapter = (mChapter + kChapterCount - 1) % kChapterCount;
@@ -1423,14 +1822,31 @@ void VernacularViewport::onFrameRender(RenderContext* pRenderContext, const ref<
             createRasterPass();
 
         setPerFrameVars(pDrawFbo.get());
-        mpRasterPass->getState()->setFbo(pDrawFbo);
-        mpScene->rasterize(
-            pRenderContext,
-            mpRasterPass->getState().get(),
-            mpRasterPass->getVars().get(),
-            RasterizerState::CullMode::None
-        );
-        drawBoids(pRenderContext, pDrawFbo);
+        if (mpRasterPass)
+        {
+            try
+            {
+                mpRasterPass->getState()->setFbo(pDrawFbo);
+                mpScene->rasterize(
+                    pRenderContext,
+                    mpRasterPass->getState().get(),
+                    mpRasterPass->getVars().get(),
+                    RasterizerState::CullMode::None
+                );
+            }
+            catch (const std::exception& e)
+            {
+                mCompileError = e.what();
+            }
+        }
+        try
+        {
+            drawBoids(pRenderContext, pDrawFbo);
+        }
+        catch (const std::exception& e)
+        {
+            mCompileError = e.what();
+        }
     }
 
     if (internal)
@@ -1480,10 +1896,21 @@ bool VernacularViewport::onKeyEvent(const KeyboardEvent& keyEvent)
             return true;
     }
 
+    if (down && keyEvent.key == Input::Key::S && keyEvent.hasModifier(Input::Modifier::Ctrl))
+    {
+        if (mShowShaderEditor)
+        {
+            saveSchoolEditor(true);
+            return true;
+        }
+    }
+
     auto trackFly = [&](Input::Key k, bool& flag)
     {
         if (keyEvent.key == k)
         {
+            if (keyEvent.hasModifier(Input::Modifier::Ctrl))
+                return false;
             if (down)
                 flag = true;
             if (up)
@@ -1544,12 +1971,13 @@ bool VernacularViewport::onKeyEvent(const KeyboardEvent& keyEvent)
         }
         if (keyEvent.key == Input::Key::F8)
         {
-            openSchoolEditor();
+            toggleShaderEditor();
             return true;
         }
         if (keyEvent.key == Input::Key::B)
         {
             mBoidsEnabled = !mBoidsEnabled;
+            mShowBoidsPanel = mBoidsEnabled;
             mStatusMsg = mBoidsEnabled ? "Boids ON (compute flock)" : "Boids OFF";
             return true;
         }
@@ -1655,7 +2083,8 @@ void VernacularViewport::onHotReload(HotReloadFlags reloaded)
         resolveMaterialIds();
         createRasterPass();
         createSchoolPasses();
-        mStatusMsg = "Hot-reloaded shaders";
+        if (mCompileError.empty())
+            mStatusMsg = "Hot-reloaded shaders";
     }
 }
 

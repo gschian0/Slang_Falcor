@@ -22,12 +22,12 @@ public:
     static constexpr float kFadeStart = 20.f;       // extra fade → 0 by kMaxDistance
     static constexpr float kDopplerRatioMin = 0.88f;
     static constexpr float kDopplerRatioMax = 1.15f; // keep orbit/fly musical, not cartoon
-    static constexpr int kMaxSources = 8;
+    static constexpr int kMaxSources = 18; // bowl + atmosphere + 16 chirp voices
     static constexpr int kMaxPartials = 3;
     static constexpr int kBowlSlot = 0;
     static constexpr int kAtmosphereSlot = 1;
-    static constexpr int kChirpSlot0 = 2; // optional bird hooks — reserved, unused this pass
-    static constexpr int kChirpCount = 3;
+    static constexpr int kChirpSlot0 = 2;
+    static constexpr int kChirpCount = 16; // cap simultaneous boid chirps (not one per agent)
 
     struct Vec3
     {
@@ -40,7 +40,7 @@ public:
     {
         Bowl = 0,       // 2–3 singing-bowl / delta-wave sines
         Atmosphere = 1, // cheap filtered noise bed
-        ChirpHook = 2,  // reserved point source (silent until filled)
+        ChirpHook = 2,  // short low sine peep (boid voices)
     };
 
     struct Listener
